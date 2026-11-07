@@ -39,3 +39,7 @@ docs/P1_Problem_Statement.pdf
 
 # Packaged Hugging Face Space (scripts/prepare_hf_space.py)
 dist/
+
+# Local report deliverables (contain dataset images) and Claude Code local state
+submission/
+.claude/

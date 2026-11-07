@@ -7,6 +7,8 @@ Phase 5 run on LOL-v1 eval15 (`results/phase5_eval15/`: `eval15.md`, `metrics.js
 `qg_diagnostics.json`) and the Phase 5 dev run (`results/phase5_dev/metrics.json`). A Phase 7 regression run
 reproduced the eval15 headline rows exactly.
 
+**Update (after the Phase 5 freeze):** a small highlight colour fix was added to the Natural and Highlight-safe styles and the app was deployed on Google Cloud Run. The Phase 5 numbers in sections 4-6 are unchanged (they are the numbers of the frozen run and are reproduced exactly with the fix switched off). The effect of the new step, the trade-off it brings and the deployment are in **section 9**.
+
 ## 1. Objective
 Restore severely under-exposed, noisy, colour-distorted images while preserving texture and edges and avoiding
 over-exposure, halos and colour shifts. Compare classical, deep-learning and hybrid approaches with the P1
@@ -158,6 +160,7 @@ where noise refinement activated on 2 of 15 images over 0.3 % of pixels.
    cameras, scenes or datasets. The 20 personal "unseen" photos have no ground truth and are not scored here.
 6. **Metrics:** NIQE was computed with pyiqa defaults. Latency is GPU latency on one laptop; CPU and container
    figures are in `docs/DEPLOYMENT.md`.
+7. **Bright windows and lamps (found after the freeze):** on a photo of a dim room with a bright window, the Natural and Highlight-safe outputs turned the white window **orange** (window RGB 0.96/0.95/0.89 became about 0.75/0.49/0.08). The eval15 images almost never contain clipped input, so this was invisible in the headline numbers. Cause: Retinexformer divides by an estimated illumination, and where the input is already clipped the colour channels are corrected unequally; LOL has no such scenes. QGH's roll-off only changes brightness. Addressed in section 9 (with a documented trade-off).
 
 ## 8. Conclusion
 - **On this test set the best method is standalone Retinexformer:** 25.15 dB PSNR, 0.8441 SSIM, 0.1314 LPIPS,
@@ -168,3 +171,77 @@ where noise refinement activated on 2 of 15 images over 0.3 % of pixels.
   improvement.
 - **The fusion hybrid** is retained only as a documented negative result.
 - These conclusions hold for LOL-v1 eval15 only.
+- **After the freeze:** a colour fix for near-clipped input (section 9) leaves eval15 effectively unchanged (Natural 25.15 -> 25.16 dB, Highlight-safe 25.12 -> 25.12 dB) and fixes the orange-window failure. Its gains on pictures with bright windows are shown on synthetic high-contrast photos and LOL-v2 pairs; real photos with clipped highlights and ground truth were not available.
+
+## 9. Update after the freeze: highlight colour fix and deployment
+
+### 9.1 What changed
+- **Colour fix** (`lumen/hybrid/highlight_hue.py`, `configs/highlight_hue.yaml`): in a soft mask of near-clipped input
+  pixels (brightest channel from 0.80, full effect at 0.95), the colour is taken from the input and the model's brightness is
+  kept (not darker than the input). Outside the mask the image is bit-identical.
+- **Used in Natural and Highlight-safe only.** Quick is untouched. Order: model -> colour fix -> QGH (QGH is unchanged and
+  still applies its highlight roll-off afterwards). Switch off with `LUMEN_HIGHLIGHT_HUE=0`.
+- **Selection:** parameters and the order were chosen on **dev data only** (50 synthetic high-contrast LOL-v2 Train photos,
+  90 real LOL-v2 pairs, 90 noisy/clean synthetic images). Order on the 50 dev images:
+
+| Order | PSNR | SSIM | LPIPS | Highlight a*b* error | Highlight brightness gap vs GT | Over-exposed pixels |
+|---|---|---|---|---|---|---|
+| QGH only (before) | 14.71 | 0.641 | 0.370 | 63.1 | 0.305 | 1.12 % |
+| colour fix -> QGH (**chosen**) | 17.76 | 0.691 | 0.298 | 3.84 | 0.055 | 0.125 % |
+| QGH -> colour fix | 17.82 | 0.691 | 0.298 | 3.89 | 0.014 | 3.22 % |
+
+The second order matches brightness slightly better but undoes QGH's protection (over-exposure back to 3.2 %), so it was not used.
+
+### 9.2 Results, fix off vs on (same images, through the real pipeline)
+`scripts/highlight_hue_integration_check.py`; "off" is the frozen behaviour. Natural / Highlight-safe. Bit-identical = outputs
+that did not change at all.
+
+| Set | PSNR off -> on | SSIM off -> on | LPIPS off -> on | NIQE off -> on | Bit-identical |
+|---|---|---|---|---|---|
+| eval15 (15, LOL-v1, the headline set) | 25.15 -> 25.16 / 25.12 -> 25.12 | 0.8441 -> 0.8441 | 0.1314 -> 0.1314 | 3.48 -> 3.48 | 14 / 15 |
+| LOL-v2 synthetic low-light pairs (100) | 16.19 -> 17.10 / 16.51 -> **17.43** | 0.765 -> 0.781 / 0.770 -> 0.784 | 0.252 -> 0.229 / 0.252 -> 0.229 | 4.11 -> 4.10 / 4.15 -> 4.15 | 9 / 100 |
+| High-contrast test photos (60, built by us) | 14.49 -> 16.86 / 14.96 -> **17.41** | 0.619 -> 0.661 / 0.626 -> 0.668 | 0.400 -> 0.339 / 0.391 -> 0.330 | 4.10 -> 4.00 / 4.07 -> 4.04 | 1 / 60 |
+| Noisy synthetic (50) | unchanged | unchanged | unchanged | unchanged | 50 / 50 |
+| Clean synthetic (50) | unchanged | unchanged | unchanged | unchanged | 50 / 50 |
+| App examples (4) | unchanged | unchanged | unchanged | unchanged | 4 / 4 |
+| Unseen real photos (20, no ground truth) | n/a | n/a | n/a | 3.82 -> 3.83 / 3.80 -> 3.80 | 4 / 20 |
+
+Highlight colour error against ground truth (CIELAB a*b* distance, pixels with a near-clipped input): high-contrast photos
+67.5 -> 4.5 (Natural), 67.0 -> 4.4 (Highlight-safe); LOL-v2 pairs 44.4 -> 9.7 and 43.6 -> 9.4. Highlight-safe over-exposure
+is shown in 9.3. The high-contrast photos are synthetic and were built like the dev set (a normal photo darkened everywhere
+except its bright regions), so they copy the failure by design and overstate real-world gain. On the user's own bright-window
+photo the window returns to near white (Natural 0.966/0.953/0.879, Highlight-safe 0.918/0.905/0.833; before 0.75/0.49/0.08);
+Quick is unchanged (0.881/0.901/0.925).
+
+### 9.3 Trade-off: over-exposed pixels
+Over-exposure = share of pixels whose brightest channel is >= 0.98.
+
+| Set | Style | Off | On |
+|---|---|---|---|
+| 20 unseen real photos | **Highlight-safe** | **0.86 %** | **1.10 %** (+0.24 points) |
+| 20 unseen real photos | Natural | 2.75 % | 2.73 % |
+| 60 high-contrast photos | Highlight-safe | 0.95 % | 0.09 % |
+| 100 LOL-v2 pairs | Highlight-safe | 1.06 % | 0.84 % |
+| eval15 | Natural / Highlight-safe | 0.82 % / 0.035 % | unchanged |
+
+On the unseen photos the share rises because a window that used to come back orange and darker (not counted as clipped) now
+comes back near white, as in the original. Where ground truth exists the share falls or stays flat.
+
+### 9.4 Latency of the fix
+No extra model call. Laptop GPU, median per image: Natural +14 ms (no clipped pixels) to +80 ms (large clipped regions);
+Highlight-safe +14 to +100 ms. In the Cloud Run container (2 vCPU): about 35-39 ms with a clipped window, 6-12 ms otherwise,
+against 1.6-6.6 s of model time.
+
+### 9.5 Tests and deployment
+- **Tests:** 186 pass (180 earlier + 6 for the colour fix and its integration), on `main` at commit
+  `7675876b9f469232cc9780b25014904fe57a5718`.
+- **Container checks** (2 CPUs, 4 GiB, non-root): full smoke test passed; with `LUMEN_HIGHLIGHT_HUE=0` all 15 probe
+  outputs are bit-identical to the pre-fix image; a missing or invalid fix config disables only the fix, with the reason shown
+  in `/api/status`; Compare All and PNG downloads verified; graceful stop 1.3 s, exit code 0.
+- **Live deployment:** Google Cloud Run, project `lumen-514004`, region `asia-south1`, revision `lumen-00003-wv5`, image
+  tag `7675876` (digest `sha256:6c26bd73...`, the digest Cloud Build pushed for that commit). 2 vCPU, 4 GiB, concurrency 1,
+  0-2 instances. URL: https://lumen-129721836906.asia-south1.run.app. The full smoke test, `/static/data/evaluation.json`
+  (HTTP 200), the three styles, the colour fix, Compare All and PNG downloads all passed against the live URL; no errors
+  in the logs. Cold start about 11 s (instance start to ready). The model file is served from a private bucket and is not in
+  the repository.
+- **Not verified:** the colour fix on real photos with clipped highlights *and* ground truth.
