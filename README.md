@@ -60,8 +60,8 @@ dragged, or moved with the arrow keys. The restored image downloads as a PNG.
 
 | Style in the app | Mode | Notes |
 |---|---|---|
-| **Natural** (recommended) | Standard: Retinexformer | |
-| **Highlight-safe** | Quality Guided | |
+| **Natural** (recommended) | Standard: Retinexformer + highlight hue fix | |
+| **Highlight-safe** | Retinexformer + hue fix + Quality Guided | |
 | **Quick** | Classical | the only style offered without the checkpoint |
 
 The workspace shows no model names, metrics or diagnostics. All of that is on **How it works** (`/details`):
@@ -154,6 +154,7 @@ weights/    README only (checkpoints are not committed)
 | `LUMEN_TORCH_THREADS` | cgroup CPU quota | PyTorch / OpenCV threads |
 | `LUMEN_CUDNN` | 0 in the app | the app disables cuDNN on CUDA (per-size plan building cost ~2.5 s); `1` re-enables it |
 | `PORT` / `LUMEN_HOST` | 7860 / 0.0.0.0 | app port and bind address |
+| `LUMEN_HIGHLIGHT_HUE` / `LUMEN_HUE_CONFIG` | 1 / `configs/highlight_hue.yaml` | restores the colour of near-clipped input regions in Natural and Highlight-safe (not Quick); `0` switches it off |
 | `LUMEN_MAX_QUEUE` | 16 | requests allowed to wait while one restoration runs; beyond that the API answers 503 "busy" |
 
 ## Submission checklist

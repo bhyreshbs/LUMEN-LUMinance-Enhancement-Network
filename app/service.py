@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import importlib.util
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,6 +29,7 @@ from lumen.classical.adaptive import config_path as classical_config_path
 from lumen.deep import CheckpointError
 from lumen.deep.checkpoints import verify as verify_checkpoint
 from lumen.hybrid.fusion import HYBRID_COMPONENTS
+from lumen.hybrid.highlight_hue import HueConfigError
 from lumen.hybrid.quality_guided import QG_COMPONENTS, QGConfigError, QualityGuidedHybrid
 from lumen.imageio import ImageValidationError, decode_image_file
 from lumen.metrics import edge_preservation, niqe, noise_level, overexposure_ratio
@@ -120,6 +122,16 @@ class EnhancementService:
         except QGConfigError as e:
             qg = ModeStatus(False, f"Quality Guided mode is disabled: {e}")
         st[QUALITY_GUIDED] = qg
+        # highlight hue fix (Natural + Highlight-safe only). A bad config disables only the fix, visibly - never silently.
+        self.hue_enabled, self.hue_reason = True, ""
+        if os.environ.get("LUMEN_HIGHLIGHT_HUE", "1") == "0":
+            self.hue_enabled, self.hue_reason = False, "switched off by LUMEN_HIGHLIGHT_HUE=0"
+        else:
+            try:
+                self.pipe.get_hue_config()
+            except HueConfigError as e:
+                self.hue_enabled, self.hue_reason = False, f"Highlight hue fix is disabled: {e}"
+                log.warning(self.hue_reason)
         return st
 
     def warmup(self) -> None:
@@ -197,12 +209,12 @@ class EnhancementService:
         self._require(mode)
         arr = self.load_input(image)
         if mode == STANDARD:
-            r = self.pipe.run(arr, "deep", deep_model="retinexformer")
+            r = self.pipe.run(arr, "deep", deep_model="retinexformer", highlight_hue=self.hue_enabled)
             self._last_input = r.input
             return self._result(mode, MODE_LABELS[mode], r, compute_niqe,
                                 timing={"model": round(r.latency_ms, 1), "total": round(r.latency_ms, 1)})
         if mode == QUALITY_GUIDED:
-            r = self.pipe.run(arr, "quality_guided_hybrid", deep_model="retinexformer")
+            r = self.pipe.run(arr, "quality_guided_hybrid", deep_model="retinexformer", highlight_hue=self.hue_enabled)
             self._last_input = r.input
             t = r.info.get("timing_ms", {})
             return self._result(mode, MODE_LABELS[mode], r, compute_niqe,
@@ -216,17 +228,19 @@ class EnhancementService:
         arr = self.load_input(image)
         results = []
         if self.status[STANDARD].available:
-            std = self.pipe.run(arr, "deep", deep_model="retinexformer")
+            std = self.pipe.run(arr, "deep", deep_model="retinexformer", highlight_hue=self.hue_enabled)
             self._last_input = std.input
             results.append(self._result(STANDARD, MODE_LABELS[STANDARD], std, compute_niqe,
                                         timing={"model": round(std.latency_ms, 1), "total": round(std.latency_ms, 1)}))
             if self.status[QUALITY_GUIDED].available:
                 qgh = QualityGuidedHybrid(self.pipe.get_deep("retinexformer"), self.pipe.get_qg_config())
                 t0 = time.perf_counter()
-                q = qgh.refine(std.output, std.input)  # no second model call
+                q = qgh.refine(std.output, std.input)  # no second model call; std.output already has the hue fix = hue -> QGH
                 refine_ms = (time.perf_counter() - t0) * 1000
                 q.info.update(self.pipe.deep_info(self.pipe.get_deep("retinexformer")),
                               qg_config=self.pipe.qg_config_source)
+                if "highlight_hue" in std.info:
+                    q.info["highlight_hue"] = std.info["highlight_hue"]
                 total = std.latency_ms + refine_ms
                 results.append(self._result(
                     QUALITY_GUIDED, MODE_LABELS[QUALITY_GUIDED], q, compute_niqe, latency_ms=total,

@@ -1,0 +1,17 @@
+meta:
+  status: production (Natural and Highlight-safe). Selected on dev data only; see
+    docs/HIGHLIGHT_HUE_STUDY.md
+  selected_on: hc_dev (50 synthetic high-contrast LOL-v2 Train photos), dev_real,
+    dev_syn; no held-out set used
+  objective: min highlight a*b* error vs GT on hc_dev, subject to hc_dev dPSNR>=0
+    and dLPIPS<=0, and dev_real/dev_syn dPSNR>=-0.02, dSSIM>=-0.001, dLPIPS<=+0.001
+    (vs production QGH)
+  stage: 'applied to the model output BEFORE the QGH highlight roll-off (order chosen
+    on dev: keeps the roll-off''s over-exposure protection)'
+params:
+  start: 0.8
+  full: 0.95
+  sigma: 3.0
+  chroma_strength: 1.0
+  lum_keep: 1.0
+  min_coverage: 0.0005

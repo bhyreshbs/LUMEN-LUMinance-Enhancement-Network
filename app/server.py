@@ -84,6 +84,7 @@ def _details(r: EnhanceResult) -> dict:
         "device": r.device, "fp16": r.fp16, "timing_ms": r.timing_ms, "processed_size": [w, h],
         "refinements": r.refinements, "identity": r.identity, "applied": r.applied, "configured": r.configured,
         "qg_config": Path(r.qg_config).name if r.qg_config else None, "metrics": r.metrics, "note": r.note,
+        "highlight_hue": r.info.get("highlight_hue"),
     }
 
 
@@ -212,7 +213,8 @@ def create_app(service: EnhancementService) -> FastAPI:
                      "reason": service.research_status(k).reason} for k, v in RESEARCH.items()]
         technical = {"checkpoint_check": service.checkpoint_check, "max_side": service.pipe.max_side,
                      "niqe_available": niqe_available(),
-                     "qg_config": Path(service.pipe.qg_config_source).name if service.pipe.qg_config_source else None}
+                     "qg_config": Path(service.pipe.qg_config_source).name if service.pipe.qg_config_source else None,
+                     "highlight_hue": {"enabled": service.hue_enabled, "reason": service.hue_reason}}
         if st[STANDARD].available:
             enh = service.pipe.get_deep("retinexformer")
             technical |= {"model": "Retinexformer (ICCV 2023)", "checkpoint": enh.weights_path.name,
