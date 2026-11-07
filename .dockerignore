@@ -19,3 +19,6 @@ app/*.pyi
 
 # packaged Hugging Face Space folder
 dist
+
+# hackathon report, PDF and figures (contain dataset images); never part of the image or the build context
+submission

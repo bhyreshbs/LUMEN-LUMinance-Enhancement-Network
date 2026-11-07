@@ -1,4 +1,5 @@
 # Files NOT uploaded to Google Cloud Build by `gcloud builds submit` (mirrors .dockerignore).
+# Top-level folders are anchored with a leading slash: a bare `data` would also match app/web/static/data/ (needed by the app).
 # Without this file gcloud would fall back to .gitignore and upload docs, tests and PDFs needlessly.
 .gcloudignore
 .git
@@ -9,12 +10,14 @@ venv
 **/__pycache__
 .pytest_cache
 .ruff_cache
-data
-results
-dist
-tests
-docs
-deploy
+/data
+/results
+/dist
+# hackathon report, PDF and figures (contain dataset images): never uploaded to Cloud Build
+/submission
+/tests
+/docs
+/deploy
 *.pdf
 phases.md
 eval_P1_*.md
