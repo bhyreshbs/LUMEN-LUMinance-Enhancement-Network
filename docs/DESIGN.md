@@ -102,6 +102,12 @@ How the refinements are applied:
   1. The first version favoured global smoothing, which a coverage cap now prevents.
   2. Highlight drifted down to luminance 0.62, which the 0.85 floor now prevents.
 
+### 4.5 Highlight hue fix (Natural and Highlight-safe)
+Where the input is nearly clipped (a bright window or lamp), the network can turn white into orange and darken the region.
+A soft mask of near-clipped input pixels takes the colour from the input and keeps the model's brightness (floor: not darker
+than the input); elsewhere the output is bit-identical. It runs on the model output **before** QGH, so QGH's highlight roll-off
+still applies afterwards. Quick is untouched. Details, order comparison and results: `docs/HIGHLIGHT_HUE_STUDY.md`.
+
 ## 5. Data and training
 - **Datasets:** LOL-v1 (`our485`, `eval15`) and LOL-v2 (Real, Synthetic); verified by `scripts/check_data.py`.
 - **Leakage audit** (16×16 thumbnail fingerprints):
