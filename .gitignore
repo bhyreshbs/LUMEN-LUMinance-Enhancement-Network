@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Data, results, checkpoints (large - download / regenerate)
+data/*
+!data/README.md
+!data/splits/
+results/
+# Checkpoints are never versioned; the runtime one is supplied at run time (see weights/README.md)
+weights/*
+!weights/README.md
+!weights/.gitkeep
+*.ckpt
+.gradio/
+flagged/
+
+# Secrets / env
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Gradio auto-generates type stubs (.pyi) for modules that subclass components; never commit them
+app/*.pyi
+
+# Third-party documents (organisers PDF and its excerpt) - not redistributed
+/Computer Vision Hackathon 2026.pdf
+docs/P1_Problem_Statement.pdf
+
+# Packaged Hugging Face Space (scripts/prepare_hf_space.py)
+dist/

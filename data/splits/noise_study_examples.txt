@@ -1,0 +1,4 @@
+app/examples/coffee_dark.jpg	data/noise_study/examples_gt/coffee_dark.png	data/noise_study/examples_clean/coffee_dark.jpg
+app/examples/chelsea_extremely_dark.jpg	data/noise_study/examples_gt/chelsea_extremely_dark.png	data/noise_study/examples_clean/chelsea_extremely_dark.jpg
+app/examples/astronaut_uneven_light.jpg	data/noise_study/examples_gt/astronaut_uneven_light.png	data/noise_study/examples_clean/astronaut_uneven_light.jpg
+app/examples/rocket_night_highlights.jpg	data/noise_study/examples_gt/rocket_night_highlights.png	data/noise_study/examples_clean/rocket_night_highlights.jpg

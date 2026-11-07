@@ -1,0 +1,38 @@
+{
+  "source": "eval_P1_T66.md (Phase 5 single run on LOL-v1 eval15; numbers verified by tests/test_web.py)",
+  "dataset": "LOL-v1 eval15",
+  "images": 15,
+  "columns": [
+    {"key": "psnr", "label": "PSNR", "better": "higher", "digits": 2},
+    {"key": "ssim", "label": "SSIM", "better": "higher", "digits": 4},
+    {"key": "lpips", "label": "LPIPS", "better": "lower", "digits": 4},
+    {"key": "niqe", "label": "NIQE", "better": "lower", "digits": 2},
+    {"key": "overexposed", "label": "Over-exposed %", "better": "lower", "digits": 2},
+    {"key": "latency_ms", "label": "GPU ms", "better": "lower", "digits": 0}
+  ],
+  "methods": [
+    {"name": "Quick (classical, tuned)", "eval_label": "Classical (tuned)",
+     "psnr": 17.16, "ssim": 0.7241, "lpips": 0.2781, "niqe": 5.50, "overexposed": 0.00, "latency_ms": 79.89},
+    {"name": "Natural (Retinexformer)", "eval_label": "**Deep: Retinexformer**", "best": true,
+     "psnr": 25.15, "ssim": 0.8441, "lpips": 0.1314, "niqe": 3.48, "overexposed": 0.82, "latency_ms": 147.93},
+    {"name": "Fusion hybrid (research)", "eval_label": "Existing hybrid (fusion): Retinexformer",
+     "psnr": 18.89, "ssim": 0.7606, "lpips": 0.3042, "niqe": 5.39, "overexposed": 0.00, "latency_ms": 541.27},
+    {"name": "Highlight-safe (Quality-Guided Hybrid)", "eval_label": "**Quality-Guided Hybrid: Retinexformer**",
+     "psnr": 25.12, "ssim": 0.8441, "lpips": 0.1314, "niqe": 3.48, "overexposed": 0.03, "latency_ms": 176.10}
+  ],
+  "note": "Higher PSNR / SSIM and lower LPIPS / NIQE are better. Over-exposed % is the share of pixels with a channel at or above 0.98. GPU latency was measured on an RTX 3050 laptop GPU.",
+  "ablation": [
+    {"part": "Classical: no Retinex brightening", "psnr": 8.46, "ssim": 0.2641, "lpips": 0.6775},
+    {"part": "Classical: no denoising", "psnr": 16.23, "ssim": 0.4408, "lpips": 0.4705},
+    {"part": "Classical: fixed instead of adaptive parameters", "psnr": 15.41, "ssim": 0.6194, "lpips": 0.3237},
+    {"part": "Fusion hybrid: without the classical branch (best variant)", "psnr": 21.12, "ssim": 0.7705, "lpips": 0.2773},
+    {"part": "Highlight-safe: without highlight roll-off", "psnr": 25.15, "ssim": 0.8439, "lpips": 0.1316},
+    {"part": "Highlight-safe: without noise refinement", "psnr": 25.12, "ssim": 0.8442, "lpips": 0.1312}
+  ],
+  "findings": [
+    "Natural (Retinexformer) is the most accurate: about 8 dB PSNR above the classical pipeline and about 6.3 dB above the fusion hybrid.",
+    "Highlight-safe reduces over-exposed pixels from 0.82 % to 0.03 %. Natural remains slightly better in PSNR (25.15 vs 25.12 dB) and the two are equivalent on SSIM, LPIPS and NIQE.",
+    "The fusion hybrid never comes within 4 dB of Natural, so it is kept only as a research baseline.",
+    "Thresholds were calibrated on a separate 269-image development split; the test set was used exactly once."
+  ]
+}

@@ -1,0 +1,10 @@
+# Evaluation, calibration, training, benchmarking and tests (on top of the runtime requirements).
+-r requirements.txt
+-r requirements-niqe.txt
+lpips==0.1.4              # LPIPS metric (scripts/evaluate.py)
+optuna==5.0.0             # scripts/tune_classical.py
+gdown==6.5.1              # Google Drive downloads (datasets, checkpoints)
+tqdm==4.70.1
+psutil==7.2.2             # peak-RAM measurement in scripts/benchmark_latency.py
+pytest==9.2.0
+httpx==0.28.1             # FastAPI TestClient (tests/test_web.py)

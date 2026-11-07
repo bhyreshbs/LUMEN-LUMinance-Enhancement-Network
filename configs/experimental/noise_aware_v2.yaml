@@ -1,0 +1,48 @@
+meta:
+  created: '2026-11-07'
+  tool: scripts/noise_study_v2.py search
+  status: experimental - not used by any production mode
+  base: configs/experimental/noise_aware.yaml (v1); only the v2 options and luma_k/luma_floor
+    were searched
+  dev:
+  - dev_lolv2_real_unseen (269)
+  - noise_study_dev_syn (90)
+  - 'noise_study_v2_dev_detail (84: handwriting, print, wood, fabric, foliage/texture
+    photos; noise-free + noisy)'
+  objective: min mean LPIPS on all dev; noisy groups mean dPSNR, dSSIM >= 0; clean-like
+    groups (noise-free, low-noise, noise-free fine detail) mean dPSNR >= -0.02, dSSIM
+    >= -0.001, dLPIPS <= +0.001 and every image dSSIM >= -0.005, dLPIPS <= +0.01;
+    noisy fine detail every image dLPIPS <= +0.02
+  search: 'coordinate descent; v1 on this dev: infeasible (worst noisy-detail dLPIPS
+    +0.191, noise-free detail +0.093). Sweep 0 complete: feasible, objective 0.4481.
+    Stopped before sweep 1 for time (user deadline); this is the sweep-0 optimum'
+  validation_sets_used_for_selection: none
+params:
+  block: 16
+  quantile: 0.3
+  noise_ratio: 0.2
+  texture_ratio: 0.55
+  luma_method: bilateral
+  luma_k: 2.0
+  luma_radius: 3
+  coarse_k: 0.0
+  detail_keep: 0.0
+  chroma_method: colour_guided
+  chroma_k: 2.0
+  chroma_radius: 16
+  luma_floor: 0.008
+  chroma_floor: 0.004
+  adaptive: true
+  edge_protect: 0.0
+  detail_ramp:
+  - 8.0
+  - 16.0
+  image_gate: 0.0
+  texture_gate: 0.4
+  chroma_mask: luma_noise
+  residual_protect: 0.0
+  residual_ramp:
+  - 2.0
+  - 4.0
+  exact_identity: true
+  texture_relief: 32.0

@@ -1,0 +1,70 @@
+# Build the production image, push it to Artifact Registry and deploy it to Cloud Run.
+#
+# Authentication: Workload Identity Federation (keyless). No service-account key is stored anywhere.
+# One-time setup: deploy/cloudrun/setup.ps1, then add the repository *variables* it prints
+# (Settings > Secrets and variables > Actions > Variables). Until GCP_PROJECT_ID is set this workflow is skipped.
+#
+# Triggers: a push to the `deploy` branch (release by `git push origin main:deploy`), or "Run workflow" manually.
+# Pushes to `main` do NOT deploy.
+# Public access (--allow-unauthenticated) is granted once by the first manual deploy (deploy.ps1 -Public);
+# the deployer here only has roles/run.developer, so it cannot change who may call the service.
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [deploy]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudrun
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.GCP_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write            # required for Workload Identity Federation
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/lumen/lumen:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push image
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy lumen --project "$PROJECT_ID" --region "$REGION" --image "$IMAGE" \
+            --execution-environment gen2 --cpu 2 --memory 4Gi --cpu-boost \
+            --concurrency 1 --min-instances 0 --max-instances 2 --timeout 300 --port 8080 \
+            --service-account "${{ vars.GCP_RUN_SA }}" \
+            --set-env-vars "LUMEN_TORCH_THREADS=2,LUMEN_MAX_SIDE=768,LUMEN_RETINEXFORMER_WEIGHTS=/models/retinexformer_LOL_v1.pth" \
+            --add-volume "name=models,type=cloud-storage,bucket=${{ vars.GCP_WEIGHTS_BUCKET }},readonly=true" \
+            --add-volume-mount "volume=models,mount-path=/models"
+
+      - name: Report status and URL
+        run: |
+          URL=$(gcloud run services describe lumen --project "$PROJECT_ID" --region "$REGION" --format 'value(status.url)')
+          echo "Service URL: $URL"
+          echo "### Deployed: $URL" >> "$GITHUB_STEP_SUMMARY"
+          # readiness (public services only; an authenticated service returns 403 here, which is reported, not fatal)
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 "$URL/healthz" || true)
+          echo "healthz HTTP $code" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$code" = "200" ]; then
+            curl -s --max-time 60 "$URL/api/status" | python3 -c "import json,sys; d=json.load(sys.stdin); print('styles:', ', '.join(f\"{s['name']}={'available' if s['available'] else 'UNAVAILABLE'}\" for s in d['styles']))" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi

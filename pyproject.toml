@@ -1,0 +1,17 @@
+[project]
+name = "lumen"
+version = "0.1.0"
+description = "LUMEN - LUMinance Enhancement Network: hybrid low-light image restoration (CV Hackathon 2026, P1)"
+requires-python = ">=3.10"
+readme = "README.md"
+
+[tool.setuptools.packages.find]
+include = ["lumen*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = ["ignore::UserWarning"]
+
+[tool.ruff]
+line-length = 120

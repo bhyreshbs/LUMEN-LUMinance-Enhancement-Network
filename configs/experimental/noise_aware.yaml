@@ -1,0 +1,35 @@
+meta:
+  created: '2026-11-07'
+  tool: scripts/noise_study.py search
+  status: experimental - not used by any production mode
+  dev:
+  - data/splits/dev_lolv2_real_unseen.txt (269 real)
+  - data/splits/noise_study_dev_syn.txt (45 noisy + 45 noise-free synthetic)
+  objective: 'min mean LPIPS on all dev; mean dPSNR, dSSIM >= 0 on dev_real and dev_syn
+    noisy; noise-free and low-noise dev: dPSNR >= -0.05, dSSIM >= -0.002, dLPIPS <=
+    +0.002; every image dPSNR >= -0.5, dSSIM >= -0.02'
+  search: coordinate descent from a conservative start; sweep 0 complete (dev objective
+    0.5402 -> 0.4933, feasible). Sweep 1 was stopped by the host for low memory after
+    re-checking texture_ratio, luma_method, luma_k, luma_radius with no change; this
+    is the sweep-0 optimum
+  eval_sets_used_for_selection: none
+params:
+  block: 16
+  quantile: 0.3
+  noise_ratio: 0.2
+  texture_ratio: 0.55
+  luma_method: bilateral
+  luma_k: 2.0
+  luma_radius: 3
+  coarse_k: 0.0
+  detail_keep: 0.0
+  chroma_method: colour_guided
+  chroma_k: 2.0
+  chroma_radius: 16
+  luma_floor: 0.008
+  chroma_floor: 0.004
+  adaptive: true
+  edge_protect: 0.0
+  detail_ramp:
+  - 8.0
+  - 16.0

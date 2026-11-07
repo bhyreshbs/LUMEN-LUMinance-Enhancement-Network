@@ -1,0 +1,47 @@
+meta:
+  created: '2026-11-06'
+  tool: scripts/tune_classical.py
+  data: data/LOL/our485/low
+  split:
+    seed: 0
+    val_frac: 0.1
+    tune: 437
+    val: 48
+  trials: 150
+  objective: mean PSNR + 10 * mean SSIM
+  selected_trial: 136
+  defaults:
+    tune:
+      psnr: 15.1245
+      ssim: 0.5113
+      objective: 20.2376
+    val:
+      psnr: 15.1822
+      ssim: 0.4998
+      objective: 20.1804
+  tuned:
+    tune:
+      psnr: 17.0039
+      ssim: 0.7224
+      objective: 24.2276
+    val:
+      psnr: 16.9243
+      ssim: 0.7257
+      objective: 24.1815
+params:
+  target_mean: 0.4984692003965448
+  gamma_min: 0.28428041764909184
+  denoise_mult: 5.954186129120387
+  denoise_max: 0.387310926418725
+  clahe_gain: 0.8269444823140937
+  clahe_ref_contrast: 0.11775384032352126
+  clahe_min: 1.0
+  clahe_max: 1.018510870582517
+  clahe_noise_thresh: 0.038916860901336545
+  clahe_noise_cap: 1.4073867210957927
+  clahe_tile: 4
+  radius_base: 17.875608052886808
+  radius_slope: 4.338129405771659
+  wb_mult: 3.7398835815491647
+  sat_gain: 0.4891288679413852
+  sat_max: 1.0091511603347734

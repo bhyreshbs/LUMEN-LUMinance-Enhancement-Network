@@ -1,0 +1,18 @@
+# Runtime dependencies of the LUMEN web app (pinned to the versions the test suite passed with,
+# Python 3.12.15). Install PyTorch from its own index first - CPU or CUDA build:
+#   pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu      (CPU)
+#   pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cu126    (CUDA 12.6)
+# Optional NIQE metric in the app: requirements-niqe.txt.  Evaluation / training / tests: requirements-dev.txt.
+numpy==2.5.4
+opencv-contrib-python-headless==5.0.0.93
+scikit-image==0.26.0
+scipy==1.18.1
+PyWavelets==1.10.0        # skimage.restoration.estimate_sigma (noise estimation)
+pillow==12.3.0
+PyYAML==6.0.3
+torch==2.14.1
+# web app (the UI is plain HTML/CSS/JS served by FastAPI; no Gradio)
+fastapi==0.162.0
+starlette==1.10.0
+uvicorn==0.54.0
+python-multipart==0.0.33   # multipart uploads

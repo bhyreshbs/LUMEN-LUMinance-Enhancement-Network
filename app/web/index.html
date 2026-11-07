@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>LUMEN · Restore dark photos</title>
+  <meta name="description" content="Upload a photo taken in low light and LUMEN restores its brightness, colour and detail.">
+  <meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f5f6fa" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/lumen.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="LUMEN home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#f6a51c"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="#151821"/><path d="M7 21h18" stroke="#3a4157" stroke-width="2" stroke-linecap="round"/><path d="M10 21a6 6 0 0 1 12 0" fill="url(#lg)"/><path d="M16 8.5v2.6M8.6 12.2l1.8 1.8M23.4 12.2l-1.8 1.8" stroke="url(#lg)" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>LUMEN</span>
+    </a>
+    <a class="navlink" href="/details">How it works</a>
+  </header>
+
+  <main id="main" class="app">
+    <!-- Empty state: what LUMEN does + how to start -->
+    <section class="hero" id="viewEmpty" aria-labelledby="heroTitle">
+      <h1 id="heroTitle">Bring your dark photos <span class="glow">back to light.</span></h1>
+      <p class="lede">Upload a photo taken in low light. LUMEN restores its brightness, colour and detail in a few seconds.</p>
+
+      <label class="dropzone" id="dropzone" for="fileInput" tabindex="0">
+        <span class="dropzone__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+        </span>
+        <strong>Drop a photo here</strong>
+        <span>or <span class="browse">choose a file</span></span>
+        <small id="limitsText">JPEG, PNG, WebP, BMP or TIFF · up to 20 MB</small>
+      </label>
+      <input type="file" id="fileInput" class="sr-only" accept="image/jpeg,image/png,image/webp,image/bmp,image/tiff,.jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff">
+
+      <div class="examples" id="examplesBlock" hidden>
+        <p>No photo handy? Try one of these:</p>
+        <ul id="examples"></ul>
+      </div>
+      <div class="notice" id="serviceNotice" role="status" hidden></div>
+    </section>
+
+    <!-- Workspace: photo on the left, the few controls needed on the right -->
+    <section class="workspace" id="viewWorkspace" aria-label="Restoration workspace" hidden>
+      <div class="stage" id="stage">
+        <div class="viewer" id="viewer">
+          <img id="imgAfter" alt="Your photo">
+          <div class="viewer__before" aria-hidden="true"><img id="imgBefore" alt=""></div>
+          <div class="viewer__divider">
+            <button class="viewer__handle" id="handle" type="button" role="slider" aria-label="Compare original and restored photo"
+                    aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50% original">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6-6 6 6 6"/><path d="m15 6 6 6-6 6"/></svg>
+            </button>
+          </div>
+          <span class="tag tag--before">Original</span>
+          <span class="tag tag--after">Restored</span>
+        </div>
+
+        <div class="placeholder" id="noPreview" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="9" r="1.5"/></svg>
+          <strong>No preview for this file</strong>
+          <span>Your browser can't display it, but you can still try restoring it.</span>
+        </div>
+
+        <div class="overlay" id="overlay" hidden>
+          <div class="overlay__card" role="status" aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <p class="overlay__title">Restoring your photo…</p>
+            <p class="overlay__sub"><span id="elapsed">0</span> s · usually a few seconds</p>
+            <div class="progress" aria-hidden="true"><span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel" aria-label="Restoration options">
+        <div class="file">
+          <img class="file__thumb" id="fileThumb" alt="">
+          <div class="file__text">
+            <p class="file__name" id="fileName">photo.jpg</p>
+            <p class="file__meta" id="fileMeta"></p>
+          </div>
+          <button class="btn btn--ghost" id="changeBtn" type="button">Change</button>
+        </div>
+
+        <fieldset class="styles" id="styles">
+          <legend>Style</legend>
+        </fieldset>
+
+        <div class="actions">
+          <button class="btn btn--primary btn--block" id="restoreBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4 7 17M17 7l1.4-1.4"/><circle cx="12" cy="12" r="4"/></svg>
+            <span id="restoreLabel">Restore photo</span>
+          </button>
+
+          <div class="result" id="result" hidden>
+            <p class="success" id="successText">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>Restored</span>
+            </p>
+            <a class="btn btn--primary btn--block" id="downloadBtn" href="#" download>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12"/><path d="m6 10 6 6 6-6"/><path d="M4 20h16"/></svg>
+              Download
+            </a>
+            <p class="result__meta" id="resultMeta"></p>
+          </div>
+
+          <button class="btn btn--block" id="cancelBtn" type="button" hidden>Cancel</button>
+        </div>
+
+        <div class="alert" id="alert" role="alert" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+          <div>
+            <p class="alert__title" id="alertTitle">Something went wrong</p>
+            <p class="alert__text" id="alertText"></p>
+          </div>
+          <div class="alert__actions" id="alertActions"></div>
+        </div>
+
+        <p class="hint" id="compareHint" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6-6 6 6 6"/><path d="m15 6 6 6-6 6"/></svg>
+          Drag across the photo to compare before and after.
+        </p>
+      </aside>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Photos are processed and not saved. Curious about the technology?
+    <a href="/details">See how LUMEN works</a>.
+  </footer>
+
+  <div class="sr-only" id="live" aria-live="polite"></div>
+  <script src="/static/js/workspace.js" type="module"></script>
+</body>
+</html>

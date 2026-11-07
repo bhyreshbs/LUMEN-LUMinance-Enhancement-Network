@@ -1,0 +1,47 @@
+meta:
+  created: '2026-11-06'
+  tool: scripts/calibrate_quality_guided.py
+  dev: data/splits/dev_lolv2_real_unseen.txt
+  images: 269
+  model: retinexformer
+  weights: retinexformer_LOL_v1.pth
+  selection: max total squared-error gain per refinement on dev; eval15 never used
+  objective: mean per-image relative squared-error gain, coverage <= 0.25
+  dev_mean_psnr: 15.6583
+  est_db_per_component:
+    noise: 0.226
+    colour: -0.0005
+    contrast: 0.0008
+    highlight: 0.0102
+  enabled:
+  - noise
+  - highlight
+params:
+  enabled:
+  - noise
+  - highlight
+  mask_sigma: 4.0
+  min_coverage: 0.005
+  noise_ramp:
+  - 0.09804631181061269
+  - 0.09907416999340057
+  noise_radius: 3
+  noise_eps: 0.0016
+  colour_ramp:
+  - 0.04
+  - 0.08
+  colour_sigma: 8.0
+  colour_min_input: 0.03
+  colour_strength: 0.5
+  contrast_ramp:
+  - 0.35
+  - 0.6
+  contrast_sigma: 3.0
+  contrast_min_cv: 0.08
+  contrast_min_input: 0.03
+  contrast_gain: 0.6
+  contrast_radius: 4
+  highlight_ramp:
+  - 0.8545117378234863
+  - 0.8813672065734863
+  highlight_knee: 0.7

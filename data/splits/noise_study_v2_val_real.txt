@@ -1,0 +1,10 @@
+data/LOL-v2/Real_captured/Test/Low/low00705.png	data/LOL-v2/Real_captured/Test/Normal/normal00705.png	real
+data/LOL-v2/Real_captured/Test/Low/low00706.png	data/LOL-v2/Real_captured/Test/Normal/normal00706.png	real
+data/LOL-v2/Real_captured/Test/Low/low00707.png	data/LOL-v2/Real_captured/Test/Normal/normal00707.png	real
+data/LOL-v2/Real_captured/Test/Low/low00742.png	data/LOL-v2/Real_captured/Test/Normal/normal00742.png	real
+data/LOL-v2/Real_captured/Test/Low/low00753.png	data/LOL-v2/Real_captured/Test/Normal/normal00753.png	real
+data/LOL-v2/Real_captured/Test/Low/low00754.png	data/LOL-v2/Real_captured/Test/Normal/normal00754.png	real
+data/LOL-v2/Real_captured/Test/Low/low00755.png	data/LOL-v2/Real_captured/Test/Normal/normal00755.png	real
+data/LOL-v2/Real_captured/Test/Low/low00756.png	data/LOL-v2/Real_captured/Test/Normal/normal00756.png	real
+data/LOL-v2/Real_captured/Test/Low/low00767.png	data/LOL-v2/Real_captured/Test/Normal/normal00767.png	real
+data/LOL-v2/Real_captured/Test/Low/low00768.png	data/LOL-v2/Real_captured/Test/Normal/normal00768.png	real

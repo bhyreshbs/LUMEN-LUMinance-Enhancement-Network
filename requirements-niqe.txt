@@ -1,0 +1,4 @@
+# Optional: NIQE no-reference metric (app checkbox + evaluation). pyiqa pulls a large dependency tree
+# (transformers, timm, datasets, ...) and downloads its NIQE parameters on first use.
+torchvision==0.29.1
+pyiqa==0.1.16

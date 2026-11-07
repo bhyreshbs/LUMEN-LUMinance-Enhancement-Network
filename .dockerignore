@@ -1,0 +1,21 @@
+# Keep the image to what the app needs at runtime
+.git
+.venv
+venv
+**/__pycache__
+.pytest_cache
+.ruff_cache
+data
+results
+tests
+docs
+*.pdf
+phases.md
+eval_P1_*.md
+# checkpoints never enter the image; mount the runtime one at /models (see docs/DEPLOYMENT.md)
+weights/*
+!weights/README.md
+app/*.pyi
+
+# packaged Hugging Face Space folder
+dist

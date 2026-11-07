@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Under the hood · LUMEN</title>
+  <meta name="description" content="How LUMEN restores low-light photos: methods, evaluation results, research comparisons and system status.">
+  <meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f5f6fa" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/lumen.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="LUMEN home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#f6a51c"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="#151821"/><path d="M7 21h18" stroke="#3a4157" stroke-width="2" stroke-linecap="round"/><path d="M10 21a6 6 0 0 1 12 0" fill="url(#lg)"/><path d="M16 8.5v2.6M8.6 12.2l1.8 1.8M23.4 12.2l-1.8 1.8" stroke="url(#lg)" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>LUMEN</span>
+    </a>
+    <a class="navlink" href="/">Restore a photo</a>
+  </header>
+
+  <main id="main" class="app doc">
+    <nav class="doc__nav" aria-label="Sections">
+      <a class="back" href="/">← Back to LUMEN</a>
+      <a href="#how">How it works</a>
+      <a href="#last">Your last photo</a>
+      <a href="#evaluation">Evaluation</a>
+      <a href="#lab">Research lab</a>
+      <a href="#system">System</a>
+      <a href="#notes">Limitations</a>
+    </nav>
+
+    <div class="doc__body">
+      <div>
+        <h1>Under the hood</h1>
+        <p class="intro">Everything technical lives here: how each style works, how it was evaluated, details of your
+          last restoration, research comparisons and the state of this server.</p>
+      </div>
+
+      <section class="card" id="how" aria-labelledby="howTitle">
+        <h2 id="howTitle">How it works</h2>
+        <p class="sub">Each style is a different restoration method. All of them run on this server; nothing is sent anywhere else.</p>
+        <div class="grid3">
+          <div class="mini">
+            <h3>Natural</h3>
+            <p>A deep neural network restores light, colour and detail in one pass.</p>
+            <p class="tech">Retinexformer (ICCV 2023), a Retinex-based transformer with 1.6&nbsp;M parameters, using the official LOL-v1 weights.</p>
+          </div>
+          <div class="mini">
+            <h3>Highlight-safe</h3>
+            <p>The same network, then targeted fixes only where its output still needs them, such as clipped lamps or noisy patches. If nothing needs fixing, the result is identical to Natural.</p>
+            <p class="tech">Quality-Guided Hybrid: feathered masks; highlight roll-off and guided-filter denoising; thresholds calibrated on a separate development split.</p>
+          </div>
+          <div class="mini">
+            <h3>Quick</h3>
+            <p>Classic image processing with no neural network. Fast and lightweight, but less accurate on very dark photos.</p>
+            <p class="tech">Illumination estimation, Retinex brightening, illumination-aware denoising, CLAHE and colour correction, with parameters adapted to each photo.</p>
+          </div>
+        </div>
+        <h3>What happens to your photo</h3>
+        <ol class="flow" aria-label="Processing steps">
+          <li>Upload</li><li class="arrow" aria-hidden="true">→</li>
+          <li>Checked: format, size, integrity</li><li class="arrow" aria-hidden="true">→</li>
+          <li>Resized to at most <span id="maxSide">1024</span> px</li><li class="arrow" aria-hidden="true">→</li>
+          <li>Restored</li><li class="arrow" aria-hidden="true">→</li>
+          <li>Returned; the upload is deleted</li>
+        </ol>
+      </section>
+
+      <section class="card" id="last" aria-labelledby="lastTitle">
+        <h2 id="lastTitle">Your last photo</h2>
+        <p class="sub">Technical details of the most recent restoration in this browser tab.</p>
+        <div id="lastBody"><div class="empty">Restore a photo, then come back here to see what happened.</div></div>
+      </section>
+
+      <section class="card" id="evaluation" aria-labelledby="evalTitle">
+        <h2 id="evalTitle">Evaluation</h2>
+        <p class="sub" id="evalSub">Loading…</p>
+        <div class="table-wrap"><table id="evalTable"><caption class="sr-only">Results on the LOL-v1 eval15 test set</caption></table></div>
+        <p class="note" id="evalNote"></p>
+        <h3>What each part contributes (ablation)</h3>
+        <div class="table-wrap"><table id="ablationTable"><caption class="sr-only">Ablation results</caption></table></div>
+        <h3>Key findings</h3>
+        <ul id="findings"></ul>
+      </section>
+
+      <section class="card" id="lab" aria-labelledby="labTitle">
+        <h2 id="labTitle">Research lab</h2>
+        <p class="sub">Compare every style side by side, or run the research baselines from the evaluation. These are for exploration, not everyday use.</p>
+        <form class="lab" id="labForm">
+          <div class="lab__row">
+            <label class="sr-only" for="labFile">Photo</label>
+            <input type="file" id="labFile" accept="image/jpeg,image/png,image/webp,image/bmp,image/tiff" required>
+            <label class="sr-only" for="labMethod">Method</label>
+            <select id="labMethod"></select>
+            <button class="btn btn--primary" type="submit" id="labRun">Run</button>
+          </div>
+          <fieldset class="chips" id="labAblation" hidden>
+            <legend class="note">Disable components of the fusion hybrid (ablation):</legend>
+          </fieldset>
+        </form>
+        <div id="labStatus" class="note" role="status" aria-live="polite"></div>
+        <div class="gallery" id="labGallery"></div>
+      </section>
+
+      <section class="card" id="system" aria-labelledby="sysTitle">
+        <h2 id="sysTitle">System</h2>
+        <p class="sub">The current state of this LUMEN server.</p>
+        <div id="systemBody"><div class="empty">Loading…</div></div>
+      </section>
+
+      <section class="card" id="notes" aria-labelledby="notesTitle">
+        <h2 id="notesTitle">Limitations</h2>
+        <ul>
+          <li>The evaluation uses 15 test images from one dataset (LOL-v1 eval15). Results on other cameras and scenes may differ.</li>
+          <li>Photos are restored at up to <span class="maxSideText">1024</span> px on the longest side.</li>
+          <li>Restorations are not forensic evidence: denoising and enhancement can alter colour and fine detail.</li>
+          <li>The model weights and training datasets come from third parties. Their licences and the open questions about them are documented in the project repository.</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer"><a href="/">← Back to restoring photos</a></footer>
+  <script src="/static/js/details.js" type="module"></script>
+</body>
+</html>

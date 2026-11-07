@@ -1,0 +1,26 @@
+# Files NOT uploaded to Google Cloud Build by `gcloud builds submit` (mirrors .dockerignore).
+# Without this file gcloud would fall back to .gitignore and upload docs, tests and PDFs needlessly.
+.gcloudignore
+.git
+.gitignore
+.github
+.venv
+venv
+**/__pycache__
+.pytest_cache
+.ruff_cache
+data
+results
+dist
+tests
+docs
+deploy
+*.pdf
+phases.md
+eval_P1_*.md
+# checkpoints never enter the image; Cloud Run mounts the runtime one from a private bucket at /models
+weights/*
+!weights/README.md
+app/*.pyi
+.env
+.env.*
