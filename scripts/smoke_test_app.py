@@ -84,7 +84,8 @@ def main() -> int:
         refs = set(re.findall(r'(?:src|href)="(/[^"#]*)"', html.decode("utf-8", "replace")))
         bad = [r for r in refs if get(base + r)[0] != 200]
         check(code == 200 and not bad, f"page {page} and its {len(refs)} assets load" + (f" (missing {bad})" if bad else ""))
-    check(get(base + "/healthz")[0] == 200, "health endpoint")
+    # Cloud Run reserves /healthz on *.run.app (Google's frontend answers 404), so fall back to /api/status there
+    check(get(base + "/healthz")[0] == 200 or get(base + "/api/status")[0] == 200, "health endpoint (/healthz or /api/status)")
 
     status = json.loads(get(base + "/api/status")[1])
     offered = [s["id"] for s in status["styles"] if s["available"]]

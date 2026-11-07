@@ -91,7 +91,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 python scripts\smoke_test_app.py --url https://<service-url> --expect-modes standard quality_guided classical
 ```
 
-`deploy.ps1` prints the URL, `/healthz`, and whether each style is available. **Natural and Highlight-safe must
+`deploy.ps1` prints the URL and whether each style is available (via `/api/status`: Google reserves `/healthz` on `*.run.app` and answers it with its own 404). **Natural and Highlight-safe must
 show `available`.** If they don't, the checkpoint mount failed: see *Troubleshooting*.
 
 Re-deploy after code changes: run step 6 again. Each deploy is tagged with the current git commit.

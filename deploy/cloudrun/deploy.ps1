@@ -60,10 +60,9 @@ G run deploy $Service --project $ProjectId --region $Region --image $Image `
 $Url = (& gcloud run services describe $Service --project $ProjectId --region $Region --format "value(status.url)").Trim()
 if ($Public) {
     Write-Host "== Checking $Url" -ForegroundColor Cyan
-    $health = Invoke-RestMethod "$Url/healthz" -TimeoutSec 120    # first request may include a cold start
-    $status = Invoke-RestMethod "$Url/api/status" -TimeoutSec 60
+    # /healthz is reserved by Google's frontend on *.run.app (404), so readiness is checked with /api/status
+    $status = Invoke-RestMethod "$Url/api/status" -TimeoutSec 120    # first request may include a cold start
     $styles = ($status.styles | ForEach-Object { "$($_.name)=$(if ($_.available) {'available'} else {'UNAVAILABLE'})" }) -join ", "
-    Write-Host "healthz: $($health | ConvertTo-Json -Compress)"
     Write-Host "styles:  $styles"
 } else {
     Write-Host "Service requires authentication. To test it locally:  gcloud run services proxy $Service --region $Region --port 7860"

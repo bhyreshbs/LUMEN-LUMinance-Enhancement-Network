@@ -63,8 +63,8 @@ jobs:
           echo "Service URL: $URL"
           echo "### Deployed: $URL" >> "$GITHUB_STEP_SUMMARY"
           # readiness (public services only; an authenticated service returns 403 here, which is reported, not fatal)
-          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 "$URL/healthz" || true)
-          echo "healthz HTTP $code" | tee -a "$GITHUB_STEP_SUMMARY"
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 "$URL/api/status" || true)
+          echo "api/status HTTP $code" | tee -a "$GITHUB_STEP_SUMMARY"
           if [ "$code" = "200" ]; then
             curl -s --max-time 60 "$URL/api/status" | python3 -c "import json,sys; d=json.load(sys.stdin); print('styles:', ', '.join(f\"{s['name']}={'available' if s['available'] else 'UNAVAILABLE'}\" for s in d['styles']))" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
