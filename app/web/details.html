@@ -77,12 +77,18 @@
       <section class="card" id="evaluation" aria-labelledby="evalTitle">
         <h2 id="evalTitle">Evaluation</h2>
         <p class="sub" id="evalSub">Loading…</p>
-        <div class="table-wrap"><table id="evalTable"><caption class="sr-only">Results on the LOL-v1 eval15 test set</caption></table></div>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Results on the LOL-v1 eval15 test set"><table id="evalTable"><caption class="sr-only">Results on the LOL-v1 eval15 test set</caption></table></div>
         <p class="note" id="evalNote"></p>
         <h3>What each part contributes (ablation)</h3>
-        <div class="table-wrap"><table id="ablationTable"><caption class="sr-only">Ablation results</caption></table></div>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Ablation results"><table id="ablationTable"><caption class="sr-only">Ablation results</caption></table></div>
         <h3>Key findings</h3>
         <ul id="findings"></ul>
+        <div id="trust" hidden>
+          <h3>How far can these numbers be trusted?</h3>
+          <p class="note" id="trustIntro"></p>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Differences between methods, with 95 % intervals"><table id="trustTable"><caption class="sr-only">Differences between methods, with 95 % intervals</caption></table></div>
+          <p class="note" id="trustCaveat"></p>
+        </div>
       </section>
 
       <section class="card" id="lab" aria-labelledby="labTitle">

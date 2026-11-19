@@ -169,7 +169,9 @@ QGH reduces over-exposure from 0.82 % to 0.03 %. Standalone Retinexformer remain
 4. **Domain shift (dev split, LOL-v2-real):**
    - Retinexformer drops to SSIM 0.33 / LPIPS 0.83 on noisier captures, and supervised fine-tuning did not
      transfer to eval15.
-   - Root cause: training on a single capture setup.
+   - Root cause: training on a single capture setup. A post-freeze analysis (`eval_P1_T66.md` section 10.4) narrows it
+     down: the dev split holds 76 low-noise and 193 very noisy images; the model is clearly better than the classical
+     pipeline on the first group and not better on the second.
 
 ## 9. Performance
 - **GPU** (RTX 3050 Laptop, fp16): Retinexformer 144 ms at 600×400 and 432 ms at 1024×683; QGH adds about
@@ -195,8 +197,13 @@ Startup takes about 7 s (model load and SHA-256 check: 0.24–0.44 s). Details a
 - **Not verified:** any GPU deployment, and the live site on real phones.
 
 ## 11. Limitations
-- eval15 has only 15 images from one capture setup, so differences of hundredths of a dB are not meaningful,
-  and no generalisation beyond the evaluated data is claimed.
+- eval15 has only 15 images from one capture setup. Differences of hundredths of a dB are negligible in size (a paired
+  bootstrap finds the 0.03 dB PSNR gap between Natural and Highlight-safe consistent but SSIM and LPIPS
+  indistinguishable), and no generalisation beyond the evaluated data is claimed.
+- **Very noisy inputs.** Every benchmark image and every unseen photo has low input noise (σ ≤ 0.015). On the 193 dev
+  images with σ ≈ 0.04–0.05 the shipped Natural style is not better than the Quick one (slightly worse on SSIM), while
+  Highlight-safe did better than Natural on all 193. The headline numbers do not describe this regime
+  (`eval_P1_T66.md` section 10.4).
 - Retinexformer degrades on noisier, differently exposed data (§8.4).
 - The QGH colour and contrast detectors exist but are disabled, because calibration found no gain.
 - CPU latency at 2 vCPUs is about 6–7 s per request, and queued users wait for the requests ahead of them.

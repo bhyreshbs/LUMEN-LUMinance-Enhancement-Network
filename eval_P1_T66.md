@@ -154,10 +154,13 @@ where noise refinement activated on 2 of 15 images over 0.3 % of pixels.
    can win.
 4. **Domain shift:** on the 269 noisier LOL-v2-real dev images, Retinexformer (trained on LOL-v1) reaches only
    SSIM 0.33 and LPIPS 0.83. Fine-tuning on LOL-v1 + LOL-v2-real improved its own validation PSNR
-   (22.54 → 23.61) but lowered eval15 to 24.44, so it was discarded.
+   (22.54 → 23.61) but lowered eval15 to 24.44, so it was discarded. A post-freeze analysis (section 10.4) shows
+   that this gap comes from the very noisy inputs in that split, not from the low-noise ones.
 5. **Small test set:** eval15 has 15 images from one capture setup. Differences of a few hundredths of a dB
-   (25.12 vs 25.15) are within what a different 15-image sample could change. No claim is made about other
-   cameras, scenes or datasets. The 20 personal "unseen" photos have no ground truth and are not scored here.
+   (25.12 vs 25.15) are negligible in size; a paired bootstrap run after the freeze (section 10.1) finds the PSNR
+   sign consistent but no SSIM or LPIPS difference. No claim is made about other
+   cameras, scenes or datasets. The 20 personal "unseen" photos have no ground truth and are not scored in
+   sections 4-6; section 10.3 scores them without a reference.
 6. **Metrics:** NIQE was computed with pyiqa defaults. Latency is GPU latency on one laptop; CPU and container
    figures are in `docs/DEPLOYMENT.md`.
 7. **Bright windows and lamps (found after the freeze):** on a photo of a dim room with a bright window, the Natural and Highlight-safe outputs turned the white window **orange** (window RGB 0.96/0.95/0.89 became about 0.75/0.49/0.08). The eval15 images almost never contain clipped input, so this was invisible in the headline numbers. Cause: Retinexformer divides by an estimated illumination, and where the input is already clipped the colour channels are corrected unequally; LOL has no such scenes. QGH's roll-off only changes brightness. Addressed in section 9 (with a documented trade-off).
@@ -165,8 +168,8 @@ where noise refinement activated on 2 of 15 images over 0.3 % of pixels.
 ## 8. Conclusion
 - **On this test set the best method is standalone Retinexformer:** 25.15 dB PSNR, 0.8441 SSIM, 0.1314 LPIPS,
   3.48 NIQE. That is +8 dB over the tuned classical pipeline and +6.3 dB over the fusion hybrid.
-- **The Quality-Guided Hybrid** is equal on SSIM, LPIPS and NIQE at the reported precision (no significance
-  test was run), 0.03 dB lower in PSNR,
+- **The Quality-Guided Hybrid** is equal on SSIM, LPIPS and NIQE at the reported precision (a paired bootstrap
+  after the freeze, section 10.1, finds no SSIM or LPIPS difference), 0.03 dB lower in PSNR,
   and cuts over-exposed pixels from 0.82 % to 0.03 %. It is a safeguard against clipping, not a quality
   improvement.
 - **The fusion hybrid** is retained only as a documented negative result.
@@ -245,3 +248,223 @@ against 1.6-6.6 s of model time.
   in the logs. Cold start about 11 s (instance start to ready). The model file is served from a private bucket and is not in
   the repository.
 - **Not verified:** the colour fix on real photos with clipped highlights *and* ground truth.
+
+<!-- phase-f:start -->
+## 10. Post-freeze additions: statistical checks
+
+Everything in this section was added **after** the Phase 5 freeze. It changes no model, configuration, threshold or headline
+number: sections 4-6 stand as written. Source: `scripts/hardening_study.py`, results in `results/phase_f_hardening/`.
+Intervals are 95 % paired bootstrap percentile intervals (10,000 resamples, seed 20261119). The resampling unit is a
+*scene* (images whose thumbnails are near-duplicates count as one), and the naive per-image interval is shown beside it. Intervals
+are not adjusted for the number of comparisons. The interval averages over images and resamples scenes; the sign-flip p-value tests the per-scene
+means, so for sets with scenes of unequal size the two can disagree near the boundary. A / tie / A worse count images, with ties below the reported precision.
+
+### 10.0 In short
+
+- **Retinexformer against the classical pipeline is a solid result on both benchmarks:** +7.991 dB on eval15 (95 % interval [+6.182, +9.813], better on 15 of 15 images) and +4.398 dB on LOL-v2-real Test with its matching checkpoint ([+2.993, +5.609], 88 of 100 images, 43 scenes).
+- **Quality Guided costs almost nothing on these low-noise sets:** on eval15 plain Retinexformer is better on PSNR by +0.032 dB ([+0.006, +0.060]), while the SSIM difference is not distinguishable and the LPIPS difference is not distinguishable.
+- **Very noisy inputs are the weak spot.** Of the 269 dev images, 193 have an input noise σ of 0.041–0.053, against at most 0.015 in any benchmark image. On those, Retinexformer against the classical pipeline is not distinguishable on PSNR (-0.136 dB) and worse on SSIM (-0.0190). Quality Guided is better than plain Retinexformer on 193 of 193 of them (+0.418 dB PSNR).
+- **No benchmark image and no unseen photo is that noisy**, so the headline numbers describe the low-noise regime only.
+- **On the 20 unseen photos (no ground truth)** Highlight-safe clips 1.62 percentage points fewer pixels than Natural ([0.47, 3.05]; fewer on 20 of 20 photos); NIQE cannot tell the styles apart.
+
+### 10.1 eval15: how far can 15 images be trusted?
+
+15 images, 15 scenes, checkpoint `retinexformer_LOL_v1.pth`. The three frozen methods were measured again and reproduce the frozen per-image results (largest per-image difference: 0.0000 dB PSNR, 0.0000 SSIM, 0.0000 LPIPS). Near-duplicate neighbours in the Retinexformer training set (LOL-v1 our485): 6 of 15 eval15 images at a strict threshold, 8 at a looser one.
+
+| Method | PSNR (dB) | SSIM | LPIPS |
+|---|---|---|---|
+| Classical | 17.16 | 0.7241 | 0.2781 |
+| Retinexformer | 25.15 | 0.8441 | 0.1314 |
+| Quality Guided (frozen) | 25.12 | 0.8441 | 0.1314 |
+| Natural (app) | 25.16 | 0.8441 | 0.1314 |
+| Highlight-safe (app) | 25.12 | 0.8441 | 0.1314 |
+
+| Comparison (A − B) | Metric | Mean difference | 95 % interval (by scene) | Naive interval (by image) | Zero excluded? | Sign-flip p | A better / tie / A worse |
+|---|---|---|---|---|---|---|---|
+| Retinexformer − Quality Guided (frozen) | PSNR (dB) ↑ | +0.032 | [+0.006, +0.060] | [+0.006, +0.060] | yes | 0.035 | 7 / 7 / 1 |
+| Retinexformer − Classical | PSNR (dB) ↑ | +7.991 | [+6.182, +9.813] | [+6.182, +9.813] | yes | < 0.001 | 15 / 0 / 0 |
+| Quality Guided (frozen) − Classical | PSNR (dB) ↑ | +7.959 | [+6.154, +9.769] | [+6.154, +9.769] | yes | < 0.001 | 15 / 0 / 0 |
+| Natural (app) − Retinexformer | PSNR (dB) ↑ | +0.004 | [+0.000, +0.011] | [+0.000, +0.011] | no | 1.000 | 1 / 14 / 0 |
+| Highlight-safe (app) − Quality Guided (frozen) | PSNR (dB) ↑ | +0.004 | [+0.000, +0.011] | [+0.000, +0.011] | no | 1.000 | 1 / 14 / 0 |
+| Retinexformer − Quality Guided (frozen) | SSIM ↑ | -0.0001 | [-0.0005, +0.0003] | [-0.0005, +0.0003] | no | 0.855 | 5 / 7 / 3 |
+| Retinexformer − Classical | SSIM ↑ | +0.1200 | [+0.0985, +0.1431] | [+0.0985, +0.1431] | yes | < 0.001 | 15 / 0 / 0 |
+| Quality Guided (frozen) − Classical | SSIM ↑ | +0.1200 | [+0.0989, +0.1429] | [+0.0989, +0.1429] | yes | < 0.001 | 15 / 0 / 0 |
+| Natural (app) − Retinexformer | SSIM ↑ | +0.0000 | [+0.0000, +0.0000] | [+0.0000, +0.0000] | no | 1.000 | 1 / 14 / 0 |
+| Highlight-safe (app) − Quality Guided (frozen) | SSIM ↑ | +0.0000 | [+0.0000, +0.0000] | [+0.0000, +0.0000] | no | 1.000 | 1 / 14 / 0 |
+| Retinexformer − Quality Guided (frozen) | LPIPS ↓ | +0.0000 | [-0.0004, +0.0005] | [-0.0004, +0.0005] | no | 0.984 | 3 / 9 / 3 |
+| Retinexformer − Classical | LPIPS ↓ | -0.1467 | [-0.1860, -0.1120] | [-0.1860, -0.1120] | yes | < 0.001 | 15 / 0 / 0 |
+| Quality Guided (frozen) − Classical | LPIPS ↓ | -0.1467 | [-0.1857, -0.1121] | [-0.1857, -0.1121] | yes | < 0.001 | 15 / 0 / 0 |
+| Natural (app) − Retinexformer | LPIPS ↓ | +0.0000 | [+0.0000, +0.0001] | [+0.0000, +0.0001] | no | 1.000 | 0 / 14 / 1 |
+| Highlight-safe (app) − Quality Guided (frozen) | LPIPS ↓ | +0.0000 | [+0.0000, +0.0001] | [+0.0000, +0.0001] | no | 1.000 | 0 / 14 / 1 |
+
+### 10.2 LOL-v2-real Test with the LOL-v2-real checkpoint
+
+100 images in 43 scenes, checkpoint `retinexformer_LOL_v2_real.pth` (not the LOL-v1 checkpoint: 90 of these images are copies of its training set). Leakage check for *this* checkpoint: images with a near-duplicate in LOL-v2-real Train: 0 (strict), 0 (loose), 28 (very loose: neighbouring shots). The Quality Guided thresholds were calibrated on LOL-v1-checkpoint outputs, so its rows here are a transfer test, not a re-calibration.
+
+| Method | PSNR (dB) | SSIM | LPIPS |
+|---|---|---|---|
+| Classical | 18.40 | 0.7394 | 0.2887 |
+| Retinexformer | 22.80 | 0.8392 | 0.1708 |
+| Quality Guided (frozen) | 22.78 | 0.8388 | 0.1720 |
+| Natural (app) | 22.85 | 0.8392 | 0.1706 |
+| Highlight-safe (app) | 22.84 | 0.8388 | 0.1718 |
+
+| Comparison (A − B) | Metric | Mean difference | 95 % interval (by scene) | Naive interval (by image) | Zero excluded? | Sign-flip p | A better / tie / A worse |
+|---|---|---|---|---|---|---|---|
+| Retinexformer − Quality Guided (frozen) | PSNR (dB) ↑ | +0.011 | [+0.003, +0.020] | [+0.006, +0.017] | yes | 0.009 | 22 / 73 / 5 |
+| Retinexformer − Classical | PSNR (dB) ↑ | +4.398 | [+2.993, +5.609] | [+3.643, +5.122] | yes | < 0.001 | 88 / 0 / 12 |
+| Quality Guided (frozen) − Classical | PSNR (dB) ↑ | +4.387 | [+2.984, +5.596] | [+3.635, +5.112] | yes | < 0.001 | 88 / 0 / 12 |
+| Natural (app) − Retinexformer | PSNR (dB) ↑ | +0.055 | [-0.002, +0.172] | [+0.008, +0.119] | no | 1.000 | 4 / 94 / 2 |
+| Highlight-safe (app) − Quality Guided (frozen) | PSNR (dB) ↑ | +0.055 | [-0.002, +0.172] | [+0.008, +0.119] | no | 1.000 | 4 / 94 / 2 |
+| Retinexformer − Quality Guided (frozen) | SSIM ↑ | +0.0004 | [-0.0000, +0.0012] | [+0.0000, +0.0011] | no | 0.145 | 16 / 70 / 14 |
+| Retinexformer − Classical | SSIM ↑ | +0.0998 | [+0.0845, +0.1153] | [+0.0888, +0.1104] | yes | < 0.001 | 93 / 0 / 7 |
+| Quality Guided (frozen) − Classical | SSIM ↑ | +0.0994 | [+0.0842, +0.1148] | [+0.0884, +0.1101] | yes | < 0.001 | 93 / 0 / 7 |
+| Natural (app) − Retinexformer | SSIM ↑ | +0.0000 | [-0.0000, +0.0001] | [-0.0000, +0.0001] | no | 1.000 | 4 / 91 / 5 |
+| Highlight-safe (app) − Quality Guided (frozen) | SSIM ↑ | +0.0000 | [-0.0000, +0.0001] | [-0.0000, +0.0001] | no | 1.000 | 4 / 91 / 5 |
+| Retinexformer − Quality Guided (frozen) | LPIPS ↓ | -0.0012 | [-0.0037, -0.0000] | [-0.0028, -0.0001] | yes | 0.012 | 23 / 73 / 4 |
+| Retinexformer − Classical | LPIPS ↓ | -0.1179 | [-0.1360, -0.0987] | [-0.1311, -0.1042] | yes | < 0.001 | 96 / 0 / 4 |
+| Quality Guided (frozen) − Classical | LPIPS ↓ | -0.1167 | [-0.1347, -0.0977] | [-0.1297, -0.1032] | yes | < 0.001 | 96 / 0 / 4 |
+| Natural (app) − Retinexformer | LPIPS ↓ | -0.0002 | [-0.0006, +0.0001] | [-0.0004, -0.0000] | no | 0.876 | 6 / 90 / 4 |
+| Highlight-safe (app) − Quality Guided (frozen) | LPIPS ↓ | -0.0002 | [-0.0006, +0.0001] | [-0.0004, -0.0000] | no | 0.876 | 6 / 90 / 4 |
+
+### 10.3 No-reference scores (no ground truth)
+
+**unseen phone photos** (20 photos). Lower is better for every column.
+
+| Method | NIQE | Noise σ | Over-exposed % |
+|---|---|---|---|
+| Classical | 3.90 | 0.0061 | 0.00 |
+| Natural (app) | 3.83 | 0.0041 | 2.72 |
+| Highlight-safe (app) | 3.80 | 0.0039 | 1.10 |
+
+| Comparison (A − B) | Metric | Mean difference | 95 % interval (by scene) | Naive interval (by image) | Zero excluded? | Sign-flip p | A better / tie / A worse |
+|---|---|---|---|---|---|---|---|
+| Natural (app) − Classical | NIQE ↓ | -0.07 | [-0.38, +0.34] | [-0.38, +0.34] | no | 0.794 | 12 / 1 / 7 |
+| Highlight-safe (app) − Classical | NIQE ↓ | -0.10 | [-0.32, +0.17] | [-0.32, +0.17] | no | 0.489 | 11 / 0 / 9 |
+| Highlight-safe (app) − Natural (app) | NIQE ↓ | -0.03 | [-0.18, +0.09] | [-0.18, +0.09] | no | 0.957 | 5 / 4 / 11 |
+| Natural (app) − Classical | Noise σ ↓ | -0.0020 | [-0.0039, -0.0005] | [-0.0039, -0.0005] | yes | 0.014 | 15 / 0 / 5 |
+| Highlight-safe (app) − Classical | Noise σ ↓ | -0.0022 | [-0.0041, -0.0007] | [-0.0041, -0.0007] | yes | 0.005 | 15 / 1 / 4 |
+| Highlight-safe (app) − Natural (app) | Noise σ ↓ | -0.0002 | [-0.0004, -0.0000] | [-0.0004, -0.0000] | yes | < 0.001 | 5 / 15 / 0 |
+| Natural (app) − Classical | Over-exposed % ↓ | +2.72 | [+1.15, +4.55] | [+1.15, +4.55] | yes | < 0.001 | 0 / 0 / 20 |
+| Highlight-safe (app) − Classical | Over-exposed % ↓ | +1.10 | [+0.35, +2.11] | [+0.35, +2.11] | yes | < 0.001 | 0 / 1 / 19 |
+| Highlight-safe (app) − Natural (app) | Over-exposed % ↓ | -1.62 | [-3.05, -0.47] | [-3.05, -0.47] | yes | < 0.001 | 20 / 0 / 0 |
+
+Not scored because no images were provided: DICM, LIME. Put them in `data/noref/<name>/` and rerun `python scripts/hardening_study.py noref`.
+
+No ground truth exists for these photos, so these numbers say nothing about fidelity. NIQE rewards natural-looking statistics, not accuracy.
+
+### 10.4 Where is the model weakest? (input noise and brightness)
+
+The dev split (LOL-v2-real Train without copies of the LOL-v1 checkpoint's training data) holds two populations of input noise (estimated σ): 76 images between 0.0025 and 0.0063, and 193 images between 0.0413 and 0.0527, with none in between. The split used here, σ = 0.025, sits in that gap; it was chosen after looking at the data, so treat it as exploratory. Across the dev split, input noise and Retinexformer's SSIM correlate at -0.94, and input noise and brightness at +0.68, which is why brightness is examined only within the low-noise group.
+
+Retinexformer against Classical: in the **low-noise** group it is better on PSNR, better on SSIM and better on LPIPS; in the **high-noise** group it is not distinguishable on PSNR, worse on SSIM and not distinguishable on LPIPS (95 % intervals by scene, tables below).
+
+Input noise (estimated σ) of the other evidence in this report: eval15: 0.0036–0.0068; LOL-v2-real Test: 0.0038–0.0148; the 20 unseen phone photos: 0.0000–0.0043 (median 0.0008). **No benchmark image and no unseen photo falls in the high-noise group**, so every headline number in this report describes the low-noise regime only.
+
+#### eval15 (LOL-v1 checkpoint)
+
+| Input noise | n (scenes) | Method | PSNR | SSIM | LPIPS |
+|---|---|---|---|---|---|
+| low (σ < 0.025); observed 0.0036–0.0068 | 15 (15) | Classical | 17.16 | 0.7241 | 0.2781 |
+|  |  | Retinexformer | 25.15 | 0.8441 | 0.1314 |
+|  |  | Quality Guided (frozen) | 25.12 | 0.8441 | 0.1314 |
+
+| Comparison (A − B) | Metric | Mean difference | 95 % interval (by scene) | Naive interval (by image) | Zero excluded? | Sign-flip p | A better / tie / A worse |
+|---|---|---|---|---|---|---|---|
+| low: Retinexformer − Classical | PSNR (dB) ↑ | +7.991 | [+6.182, +9.813] | [+6.182, +9.813] | yes | < 0.001 | 15 / 0 / 0 |
+| low: Retinexformer − Classical | SSIM ↑ | +0.1200 | [+0.0985, +0.1431] | [+0.0985, +0.1431] | yes | < 0.001 | 15 / 0 / 0 |
+| low: Retinexformer − Classical | LPIPS ↓ | -0.1467 | [-0.1860, -0.1120] | [-0.1860, -0.1120] | yes | < 0.001 | 15 / 0 / 0 |
+| low: Quality Guided (frozen) − Retinexformer | PSNR (dB) ↑ | -0.032 | [-0.060, -0.006] | [-0.060, -0.006] | yes | 0.035 | 1 / 7 / 7 |
+| low: Quality Guided (frozen) − Retinexformer | SSIM ↑ | +0.0001 | [-0.0003, +0.0005] | [-0.0003, +0.0005] | no | 0.855 | 3 / 7 / 5 |
+| low: Quality Guided (frozen) − Retinexformer | LPIPS ↓ | -0.0000 | [-0.0005, +0.0004] | [-0.0005, +0.0004] | no | 0.984 | 3 / 9 / 3 |
+
+Brightness within the low-noise group only (so that darkness is not confused with noise):
+
+| Third of input brightness | Input brightness | n | Classical PSNR | Retinexformer PSNR | Quality Guided PSNR | Retinexformer SSIM | Retinexformer LPIPS |
+|---|---|---|---|---|---|---|---|
+| darkest third | 0.025–0.038 | 5 | 15.71 | 23.95 | 23.94 | 0.7931 | 0.1767 |
+| middle third | 0.041–0.076 | 5 | 18.68 | 26.09 | 26.04 | 0.8660 | 0.1181 |
+| brightest third | 0.076–0.097 | 5 | 17.09 | 25.42 | 25.38 | 0.8731 | 0.0993 |
+
+#### LOL-v2-real Test (LOL-v2-real checkpoint)
+
+| Input noise | n (scenes) | Method | PSNR | SSIM | LPIPS |
+|---|---|---|---|---|---|
+| low (σ < 0.025); observed 0.0038–0.0148 | 100 (43) | Classical | 18.40 | 0.7394 | 0.2887 |
+|  |  | Retinexformer | 22.80 | 0.8392 | 0.1708 |
+|  |  | Quality Guided (frozen) | 22.78 | 0.8388 | 0.1720 |
+
+| Comparison (A − B) | Metric | Mean difference | 95 % interval (by scene) | Naive interval (by image) | Zero excluded? | Sign-flip p | A better / tie / A worse |
+|---|---|---|---|---|---|---|---|
+| low: Retinexformer − Classical | PSNR (dB) ↑ | +4.398 | [+2.993, +5.609] | [+3.643, +5.122] | yes | < 0.001 | 88 / 0 / 12 |
+| low: Retinexformer − Classical | SSIM ↑ | +0.0998 | [+0.0845, +0.1153] | [+0.0888, +0.1104] | yes | < 0.001 | 93 / 0 / 7 |
+| low: Retinexformer − Classical | LPIPS ↓ | -0.1179 | [-0.1360, -0.0987] | [-0.1311, -0.1042] | yes | < 0.001 | 96 / 0 / 4 |
+| low: Quality Guided (frozen) − Retinexformer | PSNR (dB) ↑ | -0.011 | [-0.020, -0.003] | [-0.017, -0.006] | yes | 0.009 | 5 / 73 / 22 |
+| low: Quality Guided (frozen) − Retinexformer | SSIM ↑ | -0.0004 | [-0.0012, +0.0000] | [-0.0011, -0.0000] | no | 0.145 | 14 / 70 / 16 |
+| low: Quality Guided (frozen) − Retinexformer | LPIPS ↓ | +0.0012 | [+0.0000, +0.0037] | [+0.0001, +0.0028] | yes | 0.012 | 4 / 73 / 23 |
+
+Brightness within the low-noise group only (so that darkness is not confused with noise):
+
+| Third of input brightness | Input brightness | n | Classical PSNR | Retinexformer PSNR | Quality Guided PSNR | Retinexformer SSIM | Retinexformer LPIPS |
+|---|---|---|---|---|---|---|---|
+| darkest third | 0.013–0.041 | 34 | 18.36 | 22.94 | 22.93 | 0.8281 | 0.1974 |
+| middle third | 0.041–0.059 | 33 | 19.13 | 23.06 | 23.04 | 0.8397 | 0.1580 |
+| brightest third | 0.060–0.142 | 33 | 17.70 | 22.38 | 22.37 | 0.8502 | 0.1561 |
+
+#### Dev split (LOL-v1 checkpoint)
+
+| Input noise | n (scenes) | Method | PSNR | SSIM | LPIPS |
+|---|---|---|---|---|---|
+| low (σ < 0.025); observed 0.0025–0.0063 | 76 (65) | Classical | 14.42 | 0.5591 | 0.5214 |
+|  |  | Retinexformer | 17.97 | 0.7354 | 0.3108 |
+|  |  | Quality Guided (frozen) | 17.96 | 0.7353 | 0.3110 |
+| high (σ ≥ 0.025); observed 0.0413–0.0527 | 193 (111) | Classical | 14.89 | 0.1919 | 1.0392 |
+|  |  | Retinexformer | 14.75 | 0.1729 | 1.0369 |
+|  |  | Quality Guided (frozen) | 15.17 | 0.2136 | 0.9913 |
+
+| Comparison (A − B) | Metric | Mean difference | 95 % interval (by scene) | Naive interval (by image) | Zero excluded? | Sign-flip p | A better / tie / A worse |
+|---|---|---|---|---|---|---|---|
+| low: Retinexformer − Classical | PSNR (dB) ↑ | +3.547 | [+2.753, +4.336] | [+2.796, +4.281] | yes | < 0.001 | 67 / 0 / 9 |
+| low: Retinexformer − Classical | SSIM ↑ | +0.1763 | [+0.1551, +0.1971] | [+0.1564, +0.1960] | yes | < 0.001 | 75 / 0 / 1 |
+| low: Retinexformer − Classical | LPIPS ↓ | -0.2106 | [-0.2325, -0.1892] | [-0.2296, -0.1912] | yes | < 0.001 | 76 / 0 / 0 |
+| low: Quality Guided (frozen) − Retinexformer | PSNR (dB) ↑ | -0.010 | [-0.020, -0.002] | [-0.020, -0.002] | yes | 0.023 | 1 / 63 / 12 |
+| low: Quality Guided (frozen) − Retinexformer | SSIM ↑ | -0.0001 | [-0.0004, +0.0000] | [-0.0004, +0.0000] | no | 0.130 | 7 / 61 / 8 |
+| low: Quality Guided (frozen) − Retinexformer | LPIPS ↓ | +0.0002 | [+0.0000, +0.0004] | [+0.0000, +0.0004] | yes | 0.109 | 7 / 61 / 8 |
+
+| Comparison (A − B) | Metric | Mean difference | 95 % interval (by scene) | Naive interval (by image) | Zero excluded? | Sign-flip p | A better / tie / A worse |
+|---|---|---|---|---|---|---|---|
+| high: Retinexformer − Classical | PSNR (dB) ↑ | -0.136 | [-0.709, +0.368] | [-0.466, +0.191] | no | 0.587 | 130 / 0 / 63 |
+| high: Retinexformer − Classical | SSIM ↑ | -0.0190 | [-0.0339, -0.0064] | [-0.0279, -0.0101] | yes | < 0.001 | 114 / 0 / 79 |
+| high: Retinexformer − Classical | LPIPS ↓ | -0.0023 | [-0.0177, +0.0137] | [-0.0104, +0.0057] | no | 0.027 | 90 / 0 / 103 |
+| high: Quality Guided (frozen) − Retinexformer | PSNR (dB) ↑ | +0.418 | [+0.364, +0.478] | [+0.393, +0.444] | yes | < 0.001 | 193 / 0 / 0 |
+| high: Quality Guided (frozen) − Retinexformer | SSIM ↑ | +0.0408 | [+0.0385, +0.0432] | [+0.0390, +0.0425] | yes | < 0.001 | 193 / 0 / 0 |
+| high: Quality Guided (frozen) − Retinexformer | LPIPS ↓ | -0.0456 | [-0.0505, -0.0413] | [-0.0482, -0.0430] | yes | < 0.001 | 193 / 0 / 0 |
+
+Brightness within the low-noise group only (so that darkness is not confused with noise):
+
+| Third of input brightness | Input brightness | n | Classical PSNR | Retinexformer PSNR | Quality Guided PSNR | Retinexformer SSIM | Retinexformer LPIPS |
+|---|---|---|---|---|---|---|---|
+| darkest third | 0.001–0.016 | 26 | 11.94 | 15.58 | 15.58 | 0.6492 | 0.4696 |
+| middle third | 0.016–0.027 | 25 | 14.71 | 18.47 | 18.47 | 0.7492 | 0.2361 |
+| brightest third | 0.027–0.059 | 25 | 16.70 | 19.94 | 19.92 | 0.8112 | 0.2202 |
+
+Dev split overall (269 images, 176 scenes):
+
+| Method | PSNR (dB) | SSIM | LPIPS |
+|---|---|---|---|
+| Classical | 14.75 | 0.2956 | 0.8929 |
+| Retinexformer | 15.66 | 0.3318 | 0.8317 |
+| Quality Guided (frozen) | 15.96 | 0.3610 | 0.7991 |
+
+| Comparison (A − B) | Metric | Mean difference | 95 % interval (by scene) | Naive interval (by image) | Zero excluded? | Sign-flip p | A better / tie / A worse |
+|---|---|---|---|---|---|---|---|
+| Retinexformer − Quality Guided (frozen) | PSNR (dB) ↑ | -0.297 | [-0.362, -0.241] | [-0.326, -0.267] | yes | < 0.001 | 12 / 63 / 194 |
+| Retinexformer − Classical | PSNR (dB) ↑ | +0.904 | [+0.393, +1.406] | [+0.531, +1.277] | yes | < 0.001 | 197 / 0 / 72 |
+| Quality Guided (frozen) − Classical | PSNR (dB) ↑ | +1.202 | [+0.677, +1.703] | [+0.830, +1.574] | yes | < 0.001 | 203 / 0 / 66 |
+| Retinexformer − Quality Guided (frozen) | SSIM ↑ | -0.0292 | [-0.0324, -0.0257] | [-0.0317, -0.0266] | yes | < 0.001 | 8 / 61 / 200 |
+| Retinexformer − Classical | SSIM ↑ | +0.0362 | [+0.0202, +0.0531] | [+0.0229, +0.0499] | yes | < 0.001 | 189 / 0 / 80 |
+| Quality Guided (frozen) − Classical | SSIM ↑ | +0.0654 | [+0.0510, +0.0801] | [+0.0537, +0.0772] | yes | < 0.001 | 217 / 0 / 52 |
+| Retinexformer − Quality Guided (frozen) | LPIPS ↓ | +0.0327 | [+0.0288, +0.0366] | [+0.0295, +0.0357] | yes | < 0.001 | 8 / 61 / 200 |
+| Retinexformer − Classical | LPIPS ↓ | -0.0611 | [-0.0777, -0.0453] | [-0.0751, -0.0478] | yes | < 0.001 | 166 / 0 / 103 |
+| Quality Guided (frozen) − Classical | LPIPS ↓ | -0.0938 | [-0.1077, -0.0803] | [-0.1055, -0.0826] | yes | < 0.001 | 234 / 0 / 35 |
+<!-- phase-f:end -->

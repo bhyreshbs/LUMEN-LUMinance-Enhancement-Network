@@ -21,6 +21,8 @@ data/
 │   ├── Real_captured/{Train,Test}/{Low,Normal}/*.png
 │   └── Synthetic/{Train,Test}/{Low,Normal}/*.png
 ├── FiveK/                           # optional
+├── noref/                           # optional: one folder per no-reference set, e.g. noref/DICM/*.jpg, noref/LIME/*.bmp
+│                                    #   (no ground truth; scored by scripts/hardening_study.py noref)
 └── unseen/                          # your own / judge-like low-light photos, never used for tuning
 ```
 

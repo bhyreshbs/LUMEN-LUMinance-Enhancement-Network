@@ -20,7 +20,7 @@ function table(headers, rows, numericFrom = 1) {
   const t = document.createDocumentFragment();
   t.append(el("thead", {}, el("tr", {}, ...headers.map((h, i) => el("th", { scope: "col", class: i >= numericFrom ? "num" : "", text: h })))));
   t.append(el("tbody", {}, ...rows.map((r) => el("tr", r.best ? { class: "is-best" } : {},
-    ...r.cells.map((c, i) => (i === 0 ? el("th", { scope: "row", text: c }) : el("td", { class: "num", text: c })))))));
+    ...r.cells.map((c, i) => (i === 0 ? el("th", { scope: "row", text: c }) : el("td", { class: i >= numericFrom ? "num" : "", text: c })))))));
   return t;
 }
 
@@ -55,7 +55,7 @@ function renderLast() {
       return { cells: [names[k], configured ? "on" : "off (calibration)", r ? yes(r.active) : "–", r ? pct(r.coverage) : "–", r ? pct(r.area_frac) : "–"] };
     });
     body.append(el("h3", { text: "Highlight-safe refinements" }),
-      el("div", { class: "table-wrap" }, el("table", {}, table(["Refinement", "Enabled", "Applied", "Coverage", "Area > 50 %"], rows))),
+      el("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": "Highlight-safe refinements of your last photo" }, el("table", {}, table(["Refinement", "Enabled", "Applied", "Coverage", "Area > 50 %"], rows))),
       el("p", { class: "note", text: d.identity
         ? "No refinement was needed, so the result is exactly the Natural restoration."
         : `Applied only inside the detected regions: ${(d.applied || []).map((a) => names[a] || a).join(", ")}.` }));
@@ -72,6 +72,13 @@ async function renderEvaluation() {
   $("ablationTable").append(table(["Variant", "PSNR", "SSIM", "LPIPS"],
     ev.ablation.map((a) => ({ cells: [a.part, fmt(a.psnr, 2), fmt(a.ssim, 4), fmt(a.lpips, 4)] }))));
   $("findings").replaceChildren(...ev.findings.map((f) => el("li", { text: f })));
+  if (ev.robustness && ev.robustness.rows.length) {      // intervals and the noise caveat, generated from the study results
+    $("trustIntro").textContent = ev.robustness.intro;
+    $("trustTable").append(table(["Test set", "Comparison (A − B)", "Metric", "Difference (95 % interval)", "A is"],
+      ev.robustness.rows.map((r) => ({ cells: [r.dataset, r.comparison, r.metric, `${r.difference} ${r.interval}`, r.reading] })), 3));
+    $("trustCaveat").textContent = ev.robustness.caveat;
+    $("trust").hidden = false;
+  }
 }
 
 // ------------------------------------------------------------------ system + research lab

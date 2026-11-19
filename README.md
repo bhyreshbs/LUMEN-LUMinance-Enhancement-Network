@@ -127,6 +127,11 @@ docker run --rm -p 7860:7860 --cpus 2 --memory 3g -v "$PWD/weights:/models:ro" l
 5. Tests: `pip install -r requirements-dev.txt && pytest -q` (186 tests, including the web API in `tests/test_web.py`).
 6. Container checks: `python scripts/smoke_test_app.py --url http://127.0.0.1:7860` and
    `python scripts/benchmark_container.py --input <768x512 image>`.
+7. Statistical checks added after the freeze (about 12 minutes on a laptop GPU; changes no model or setting):
+   `python scripts/hardening_study.py all`. It re-measures the frozen eval15 rows (and checks they match), computes paired
+   bootstrap intervals by scene, evaluates LOL-v2-real Test with its matching checkpoint, scores unseen photos without
+   ground truth, and splits results by input noise and brightness. It writes `results/phase_f_hardening/` and section 10 of
+   [`eval_P1_T66.md`](eval_P1_T66.md), plus the "how far can these numbers be trusted" table on the details page.
 
 ## Python API
 

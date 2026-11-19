@@ -375,6 +375,7 @@ button, input, select { font: inherit; color: inherit; }
 .flow li { padding: 8px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); font-size: 14px; }
 .flow li.arrow { background: none; border: 0; padding: 0; color: var(--muted); }
 .table-wrap { overflow-x: auto; margin: 8px 0 4px; border: 1px solid var(--border); border-radius: 12px; }
+.table-wrap:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
 th { color: var(--muted); font-weight: 600; background: var(--surface-2); }
