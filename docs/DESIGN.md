@@ -184,13 +184,15 @@ QGH reduces over-exposure from 0.82 % to 0.03 %. Standalone Retinexformer remain
 Startup takes about 7 s (model load and SHA-256 check: 0.24–0.44 s). Details and method: `DEPLOYMENT.md`.
 
 ## 10. Deployment
-- **Image:** CPU Docker image (2.32 GB) with a 768 px processing limit, one request at a time, and PyTorch and
+- **Image:** CPU Docker image (2.02 GB) with a 768 px processing limit, one request at a time, and PyTorch and
   OpenCV threads matched to the container's CPU quota.
 - **Checkpoint:** supplied by a read-only mount at `/models`, with its SHA-256 verified at startup. A missing,
   corrupt or altered checkpoint leaves only Classical available.
 - **Calibrated QGH config:** baked into the image and validated at build and start. If it's missing or invalid,
   only Quality Guided is disabled.
-- **Not yet verified:** no hosting provider and no GPU deployment.
+- **Hosting:** live on Google Cloud Run (asia-south1, 2 vCPU / 4 GiB, concurrency 1, 0-2 instances). The deployed
+  revision and its live checks are recorded in `eval_P1_T66.md` section 9.5; the procedure is in `DEPLOY_CLOUD_RUN.md`.
+- **Not verified:** any GPU deployment, and the live site on real phones.
 
 ## 11. Limitations
 - eval15 has only 15 images from one capture setup, so differences of hundredths of a dB are not meaningful,

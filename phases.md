@@ -24,10 +24,11 @@ Numbers are LOL-v1 eval15 unless stated otherwise. Full results: [`eval_P1_T66.m
 | 4 | Ablation of the fusion hybrid | Done | Best fusion variant 21.12 dB: it never approaches standalone Retinexformer (negative result, documented) |
 | 5 | Quality-Guided Hybrid (QGH) | Done | Retinexformer + conditional refinements, thresholds calibrated on a 269-pair dev split, eval15 run once: 25.12 dB, equal SSIM/LPIPS/NIQE, over-exposure **0.82 % → 0.03 %** |
 | 6 | Application integration | Done | Standard / Quality Guided / Classical modes, research section, strict config + checkpoint handling, image validation, QGH diagnostics, Compare All with one model run |
-| 7 | Deployment verification | Done (local) | Production image built (2.32 GB) and smoke-tested; checkpoint mounted externally with SHA-256 check; CPU threads fixed (3.3x speed-up); 768 px limit; measured latency and RAM. **No hosting provider or GPU deployment verified** |
+| 7 | Deployment verification | Done (local) | Production image built (2.32 GB with Gradio, 2.02 GB after the redesign in 7b) and smoke-tested; checkpoint mounted externally with SHA-256 check; CPU threads fixed (3.3x speed-up); 768 px limit; measured latency and RAM. **At that point no hosting provider or GPU deployment was verified (hosting: see Phase 9; GPU deployment is still untested)** |
 | 7b | UI/UX redesign | Done (local) | Gradio replaced by a static HTML/CSS/JS frontend on FastAPI. Simple workspace (Natural / Highlight-safe / Quick, before/after slider, download); technical details, evaluation and research lab moved to *How it works*. Service, models, QGH and thresholds unchanged; API output byte-identical to direct service calls (test). Verified in headless Chrome at desktop, tablet and phone sizes |
-| 8 | Documentation and repository preparation | Done, pending approval | Evaluation report, design doc, deployment guide, licensing notes; initial commit awaiting approval |
-| 9 | Hosting and demo | **Prepared, not deployed** | Cloud Run (`docs/DEPLOY_CLOUD_RUN.md`: asia-south1, 2 vCPU / 4 GiB, checkpoint from a private bucket, keyless GitHub Actions) and Hugging Face Spaces (`docs/DEPLOY_HF_SPACES.md`) prepared; both images built and smoke-tested locally. Still open: Google Cloud project + billing, the actual deployment, a public-URL check on phone and laptop, demo script and viva preparation. Residual-noise study (experimental, not integrated): `docs/NOISE_STUDY.md` |
+| 8 | Documentation and repository preparation | Done | Evaluation report, design doc, deployment guide, licensing notes; committed to the private GitHub repository |
+| 9 | Hosting and demo | **Hosting done; demo preparation open** | Deployed on Google Cloud Run (`docs/DEPLOY_CLOUD_RUN.md`: asia-south1, 2 vCPU / 4 GiB, checkpoint from a private bucket); the live smoke test, three styles, Compare All and PNG downloads passed (`eval_P1_T66.md` section 9.5). Hugging Face Spaces (`docs/DEPLOY_HF_SPACES.md`) is prepared and smoke-tested locally, **not deployed**. Still open: a public-URL check on a real phone, demo script and viva preparation (`IMPROVEMENT_PHASES.md` Phase I). Residual-noise study (experimental, not integrated): `docs/NOISE_STUDY.md` |
+| 10 | Highlight colour fix (after the Phase 5 freeze) | Done, deployed | Natural and Highlight-safe keep the colour of near-clipped input regions, so bright windows no longer turn orange. eval15 essentially unchanged (1 of 15 outputs differs: Natural 25.15 → 25.16 dB, Highlight-safe 25.12 → 25.12 dB). Merged to `main`, live on Cloud Run. Validated on synthetic and LOL-v2 data only, no real clipped-highlight pairs with ground truth yet (`docs/HIGHLIGHT_HUE_STUDY.md`, `eval_P1_T66.md` section 9) |
 
 ## Changes from the original plan
 - **Deep model:** Retinexformer replaced Zero-DCE++ as the primary model (zero-reference training capped PSNR at about 15 dB).
@@ -41,7 +42,7 @@ Numbers are LOL-v1 eval15 unless stated otherwise. Full results: [`eval_P1_T66.m
 - **Weights:** the checkpoint is **not redistributed** (licence uncertainty). It is mounted at run time and verified by SHA-256.
 
 ## Open items
-1. Hosting: deploy, then verify the public URL on phone and laptop, with first-request latency.
+1. Hosting is live; still open: check the public URL on a real phone and laptop and record the first-request latency.
 2. Visual UI check in a real browser: desktop and mobile layout, slider, error toasts, loading states.
 3. Licensing questions before any public release (see `THIRD_PARTY_NOTICES.md`).
 4. Demo and viva preparation: a 3-minute script, a member-to-module ownership map, and failure cases to show

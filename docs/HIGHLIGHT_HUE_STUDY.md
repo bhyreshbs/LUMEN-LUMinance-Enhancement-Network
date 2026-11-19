@@ -1,6 +1,6 @@
 # Highlight hue-preservation fix: study and integration
 
-**Status: integrated in Natural and Highlight-safe on branch `integration/highlight-hue`, pending review. Not merged to `main`, not deployed.** Quick (classical) is unchanged.
+**Status: integrated in Natural and Highlight-safe, merged to `main` (merge commit `2f5c83f`) and deployed on Cloud Run (`eval_P1_T66.md` section 9.5).** Quick (classical) is unchanged.
 
 **Problem.** Where the input is already (nearly) clipped, such as a bright window or lamp in a dark room, Retinexformer's
 illumination division moves the colour channels by different amounts, so white turns orange and the region gets darker

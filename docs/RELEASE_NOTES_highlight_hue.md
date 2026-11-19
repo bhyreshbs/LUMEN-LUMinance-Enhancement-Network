@@ -1,4 +1,4 @@
-# Release notes: highlight hue fix (branch `integration/highlight-hue`, not merged, not deployed)
+# Release notes: highlight hue fix (branch `integration/highlight-hue`, merged to `main` in `2f5c83f`, deployed on Cloud Run)
 
 ## What changes for users
 White or bright areas that were already (nearly) clipped in the dark photo - a window, a lamp - no longer turn orange or
@@ -51,5 +51,6 @@ Environment: Docker Desktop 29.9.2 (WSL 2), `--cpus 2 --memory 4g`, `PORT=8080`,
 Test method note: an early failure-case run mistakenly tested only "file not found" because Git Bash rewrote the `/cfg/...`
 path; the three invalid-content cases were rerun with path conversion disabled and old results deleted before comparing.
 
-**Not verified:** a real Cloud Run deployment of this version (the live service still runs the previous image), the
-Cloud Storage volume mount with this version, and real-world performance on photos with clipped highlights and ground truth.
+**Not verified when this local report was written (2026-11-07):** a Cloud Run deployment of this version and the Cloud Storage
+volume mount with it. Both have since been done: the version was merged to `main` and deployed, and its live checks are in
+`eval_P1_T66.md` section 9.5. **Still not verified:** real-world performance on photos with clipped highlights and ground truth.

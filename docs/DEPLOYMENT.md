@@ -5,7 +5,8 @@ running container on Docker Desktop 29.9.2 (WSL 2 backend, x86_64): all modes, C
 missing, tampered and altered checkpoints, missing and invalid QGH config, NIQE behaviour, concurrency,
 resource use at 768 px, and the browser UI in headless Chrome. The redesigned UI (FastAPI + static frontend,
 replacing Gradio) was re-verified in the container on the same date. See the *Verification log*. Not yet
-verified: any hosting platform, any GPU, real mobile devices.
+verified in this container run: any GPU, real mobile devices. The later Cloud Run deployment is recorded in
+`eval_P1_T66.md` section 9.5 and `DEPLOY_CLOUD_RUN.md`.
 
 ## What the container needs
 
@@ -132,7 +133,8 @@ it). The provided image is CPU-only; **no GPU deployment has been tested.**
 | No checkpoint mounted (new UI) | **Passed**: only Quick offered; Natural request -> 409 with the reason |
 | Browser E2E (headless Chrome 156 over CDP, 1440x900 / 820x1180 / 390x844) | **All checks passed** on all three: empty, HEIC rejection, ready, working + cancel, result, slider by keyboard and pointer, cached style switching (no repeat request), download (PNG byte-identical to the shown result), invalid upload alert (on screen on phones), TIFF (no preview -> placeholder, restores), details page, research lab, no horizontal overflow, images with alt text, named buttons. Console: only the intentional 422; no other HTTP errors |
 | Upload deletion | No `lumen_upload_*` files left in the container after all tests |
-| Hosting platform, GPU | **Not done** |
+| GPU | **Not done** |
+| Hosting platform | Not part of this container verification. Cloud Run deployment and its live checks: `eval_P1_T66.md` section 9.5 |
 
 ## Privacy note
 Each upload is streamed to a private temporary file (`lumen_upload_*`, size-limited while streaming) and deleted

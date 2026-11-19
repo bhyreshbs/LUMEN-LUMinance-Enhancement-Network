@@ -27,12 +27,17 @@ Quality Guided reduces over-exposed pixels from 0.82 % to 0.03 %. Standalone Ret
 in PSNR, and the two are equivalent on SSIM, LPIPS and NIQE. These results are for eval15 only. Full report, with
 ablations, per-image results and failure cases: [`eval_P1_T66.md`](eval_P1_T66.md).
 
+The table is the frozen Phase 5 run. The app's **Natural** and **Highlight-safe** styles also include a highlight
+colour fix added afterwards (bright windows no longer turn orange). On eval15 it changes 1 of 15 outputs: Natural
+25.15 → 25.16 dB, Highlight-safe 25.12 → 25.12 dB (section 9 of the report, which also states its trade-off).
+
 | Document | Contents |
 |---|---|
 | [`docs/DESIGN.md`](docs/DESIGN.md) | requirements traceability, methods, training, ablation, failure analysis, limitations, ethics |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | system diagram and module map |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | container, checkpoint mount, measured CPU latency and RAM, verification log |
 | [`weights/README.md`](weights/README.md), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | checkpoint provenance, licences, open questions |
+| [`docs/HIGHLIGHT_HUE_STUDY.md`](docs/HIGHLIGHT_HUE_STUDY.md), [`docs/RELEASE_NOTES_highlight_hue.md`](docs/RELEASE_NOTES_highlight_hue.md) | the highlight colour fix: study, integration, trade-off |
 | [`phases.md`](phases.md) | project phases: plan vs. outcome |
 
 ## Quick start (local)
@@ -88,10 +93,12 @@ docker run --rm -p 7860:7860 --cpus 2 --memory 3g -v "$PWD/weights:/models:ro" l
 - **Measured on the test laptop, 768×512 input:** Standard takes **6.3 s median at 2 CPUs and 3.8 s at 4 CPUs**,
   with peak memory **≤ 2.1 GB** for single modes, hence the 3 GB limit. After the UI redesign (FastAPI, 2.02 GB
   image): Standard **5.9 s median at 2 CPUs**, peak ≤ 1.8 GB.
-- **Hosting (prepared, not yet deployed):** Google Cloud Run, see [`docs/DEPLOY_CLOUD_RUN.md`](docs/DEPLOY_CLOUD_RUN.md)
-  (setup and deploy scripts in `deploy/cloudrun/`, keyless GitHub Actions workflow in `.github/workflows/`), and
-  Hugging Face Spaces, see [`docs/DEPLOY_HF_SPACES.md`](docs/DEPLOY_HF_SPACES.md). Both images were built and
-  smoke-tested locally, the Cloud Run one with `PORT=8080`, 2 CPUs and 4 GiB. No GPU deployment has been tested.
+- **Hosting:** **live on Google Cloud Run** (asia-south1, 2 vCPU / 4 GiB, concurrency 1):
+  <https://lumen-129721836906.asia-south1.run.app>. The deployed revision and its live checks are recorded in
+  [`eval_P1_T66.md`](eval_P1_T66.md) section 9.5; the procedure is in [`docs/DEPLOY_CLOUD_RUN.md`](docs/DEPLOY_CLOUD_RUN.md)
+  (scripts in `deploy/cloudrun/`, keyless GitHub Actions workflow in `.github/workflows/`). The Hugging Face Spaces
+  route, [`docs/DEPLOY_HF_SPACES.md`](docs/DEPLOY_HF_SPACES.md), is prepared and smoke-tested locally but **not
+  deployed**. No GPU deployment has been tested.
 
 ## Reproducing the results
 
@@ -104,7 +111,7 @@ docker run --rm -p 7860:7860 --cpus 2 --memory 3g -v "$PWD/weights:/models:ro" l
    python scripts/evaluate.py --low data/LOL/eval15/low --high data/LOL/eval15/high --deep-models retinexformer \
        --team T66 --usns 1RUA24CSE0093,1RUA24CSE0096,1RUA24CSE0258,1RUA24CSE0259 --run eval15
    ```
-5. Tests: `pip install -r requirements-dev.txt && pytest -q` (167 tests, including the web API in `tests/test_web.py`).
+5. Tests: `pip install -r requirements-dev.txt && pytest -q` (186 tests, including the web API in `tests/test_web.py`).
 6. Container checks: `python scripts/smoke_test_app.py --url http://127.0.0.1:7860` and
    `python scripts/benchmark_container.py --input <768x512 image>`.
 
@@ -128,15 +135,16 @@ raises `CheckpointError`, and a missing or invalid QGH config raises `QGConfigEr
 
 ```
 lumen/      classical/ (adaptive, illumination, filters, contrast, pipeline)   deep/ (retinexformer, zero_dce,
-            infer, checkpoints)   hybrid/ (quality_guided, fusion)   metrics/   imageio.py   pipeline.py
+            infer, checkpoints)   hybrid/ (quality_guided, highlight_hue, fusion)   metrics/   imageio.py   pipeline.py
 app/        app.py (entry point)   server.py (FastAPI: pages + JSON API)   service.py (modes, checks, Compare All)
             web/ (index.html, details.html, static/ css js data img)   examples/ (CC0 / public domain)
-configs/    classical.yaml (tuned)   quality_guided.yaml (calibrated)   experimental/ (research only, unused by the app)
+configs/    classical.yaml (tuned)   quality_guided.yaml (calibrated)   highlight_hue.yaml   experimental/ (research only, unused by the app)
 scripts/    data checks, tuning, calibration, training, evaluation, benchmarks, smoke test, checkpoint download,
             noise_study*.py (experimental research), prepare_hf_space.py
 deploy/     cloudrun/ (setup.ps1, deploy.ps1)   huggingface/ (Space Dockerfile, start.py)
 tests/      pytest suite
-docs/       DESIGN, ARCHITECTURE, DEPLOYMENT, DEPLOY_CLOUD_RUN, DEPLOY_HF_SPACES, NOISE_STUDY (experimental)
+docs/       DESIGN, ARCHITECTURE, DEPLOYMENT, DEPLOY_CLOUD_RUN, DEPLOY_HF_SPACES, HIGHLIGHT_HUE_STUDY,
+            RELEASE_NOTES_highlight_hue, NOISE_STUDY (experimental)
 data/       README + split lists only (datasets are not committed)
 weights/    README only (checkpoints are not committed)
 ```
@@ -159,7 +167,7 @@ weights/    README only (checkpoints are not committed)
 
 ## Submission checklist
 
-- [ ] Live hosted application URL (not yet deployed)
+- [x] Live hosted application URL (Google Cloud Run, see Docker section; not yet checked on a real phone)
 - [x] Source code, architecture diagram, design document
 - [x] `eval_P1_T66.md`: USNs on the first line, metrics in P1 order
 - [x] Ablation study and failure-case analysis

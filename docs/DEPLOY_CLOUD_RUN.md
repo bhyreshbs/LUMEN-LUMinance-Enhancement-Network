@@ -1,10 +1,11 @@
 # Deploying LUMEN on Google Cloud Run
 
-**Status (2026-11-07): prepared, not deployed.** Here is what has and has not been verified:
-- The production image was built and smoke-tested locally the way Cloud Run runs it: `PORT=8080`, 2 CPUs,
-  4 GiB, checkpoint mounted read-only at `/models`. See *Verification* at the end.
-- **No Google Cloud project has been configured, and nothing has been deployed.** The steps below need your
-  Google login, a project and billing.
+**Status: deployed and live.** The deployment record (revision, image tag and digest, live smoke test, cold start) is in
+`eval_P1_T66.md` section 9.5. This file is the procedure to repeat or reproduce it; the steps below need your Google
+login, a project and billing.
+- The production image was first built and smoke-tested locally the way Cloud Run runs it: `PORT=8080`, 2 CPUs,
+  4 GiB, checkpoint mounted read-only at `/models`. That earlier check (2026-11-07, before deployment) is kept
+  under *Verification (local)* at the end.
 
 ## Architecture
 
@@ -205,5 +206,5 @@ Run on Docker Desktop 29.9.2 (WSL 2, x86_64) with the production `Dockerfile`, c
 | Graceful shutdown | `docker stop` (SIGTERM, 10 s grace, as on Cloud Run) exited in 1.4 s with **exit code 0**, not OOM-killed |
 | No checkpoint mounted | starts; Natural and Highlight-safe `UNAVAILABLE: No retinexformer checkpoint found (looked for: /models/retinexformer_LOL_v1.pth)`; Quick works |
 
-**Not verified:** an actual Cloud Run deployment, Cloud Build in your project, the Cloud Storage volume on
-Cloud Run, and real cold-start times.
+**Not verified at the time of this local check:** an actual Cloud Run deployment, Cloud Build in the project, the Cloud
+Storage volume on Cloud Run, and real cold-start times. These were done afterwards; see `eval_P1_T66.md` section 9.5.
