@@ -85,6 +85,10 @@ class EnhanceResult:
     info: dict = field(default_factory=dict)
     # refinements that really changed this photo: name -> (soft mask in [0, 1], shape H x W, mean coverage)
     masks: dict = field(default_factory=dict)
+    # where the light is, for the "Look closer" drawer: the model's light-up map ("added": where and how much light the
+    # network added), or for Quick the classical illumination estimate ("scene": the light the photo already had)
+    light_map: np.ndarray | None = None
+    light_map_kind: str | None = None
 
 
 def niqe_available() -> bool:
@@ -185,6 +189,17 @@ class EnhancementService:
         return m
 
     @staticmethod
+    def _light_map(steps: dict):
+        """(H x W map in [0, 1], kind) from a run's intermediates, or (None, None)."""
+        for k, v in steps.items():
+            if k.endswith("_map"):
+                return np.asarray(v)[..., 0] if np.ndim(v) == 3 else np.asarray(v), "added"
+        if "illumination" in steps:
+            v = steps["illumination"]
+            return np.asarray(v)[..., 0] if np.ndim(v) == 3 else np.asarray(v), "scene"
+        return None, None
+
+    @staticmethod
     def _applied_masks(info: dict, steps: dict) -> dict:
         """Masks of the refinements that were actually applied to this photo (highlight colour fix, and the
         quality-guided noise / highlight / colour / contrast steps), each with its mean coverage."""
@@ -212,7 +227,9 @@ class EnhancementService:
             res.refinements, res.identity = info["refinements"], info["identity"]
             res.applied, res.configured = info["applied"], info.get("configured")
             res.qg_config = info.get("qg_config", self.pipe.qg_config_source)
-        res.masks = self._applied_masks(info, getattr(r, "intermediates", None) or {})
+        steps = getattr(r, "intermediates", None) or {}
+        res.masks = self._applied_masks(info, steps)
+        res.light_map, res.light_map_kind = self._light_map(steps)
         if mode == CLASSICAL:
             p = classical_config_path()
             res.checkpoint = None
@@ -262,6 +279,9 @@ class EnhancementService:
                     q.info["highlight_hue"] = std.info["highlight_hue"]
                 if "mask_highlight_hue" in std.intermediates:
                     q.intermediates["mask_highlight_hue"] = std.intermediates["mask_highlight_hue"]
+                for k, v in std.intermediates.items():       # the shared model run's light-up map
+                    if k.endswith("_map"):
+                        q.intermediates[k] = v
                 total = std.latency_ms + refine_ms
                 results.append(self._result(
                     QUALITY_GUIDED, MODE_LABELS[QUALITY_GUIDED], q, compute_niqe, latency_ms=total,

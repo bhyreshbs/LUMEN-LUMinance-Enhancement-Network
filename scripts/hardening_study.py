@@ -654,7 +654,9 @@ def robustness_block(s) -> dict:
         short = lambda k: NAME[k].replace(" (frozen)", "")
         rows.append({"dataset": dataset, "comparison": f"{short(a)} − {short(b)}", "metric": LABEL[metric],
                      "difference": fmt(c["mean_diff"], metric), "interval": f"[{fmt(c['ci_lo'], metric)}, {fmt(c['ci_hi'], metric)}]",
-                     "reading": verdict(c)})
+                     "reading": verdict(c), "metric_key": metric, "higher_is_better": HIGHER_IS_BETTER[metric],
+                     "mean": round(c["mean_diff"], 5), "lo": round(c["ci_lo"], 5), "hi": round(c["ci_hi"], 5),
+                     "n": c["n"], "a_better": c["a_better"], "a_worse": c["a_worse"]})
 
     if "eval15" in s:
         for a, b, m in (("retinexformer", "classical", "psnr"), ("retinexformer", "classical", "ssim"), ("retinexformer", "qgh", "psnr"),
@@ -679,7 +681,29 @@ def robustness_block(s) -> dict:
     return {"intro": f"95 % paired bootstrap intervals ({N_RESAMPLES:,} resamples), resampled by scene so that repeated shots of one scene count once. "
                      "A difference whose interval includes zero is called not distinguishable. The intervals are not adjusted for the number of comparisons. "
                      "LOL-v2-real Test is scored with the matching LOL-v2-real checkpoint; every other row uses the LOL-v1 checkpoint.",
-            "rows": rows, "caveat": caveat}
+            "rows": rows, "caveat": caveat,
+            # the "In short" bullets of eval_P1_T66.md section 10.0, as plain text
+            "summary": [re.sub(r"\*\*", "", line[2:]) for line in summary_bullets(s) if line.startswith("- ")],
+            "noise_bands": noise_bands_block(s)}
+
+
+def noise_bands_block(s) -> list[dict]:
+    """Mean results per input-noise group on the dev split, for the Evidence page's noise chart."""
+    dev = (s.get("strata") or {}).get("dev")
+    if not dev:
+        return []
+    out = []
+    for key, label in (("low", "Low-noise photos"), ("high", "Very noisy photos")):
+        b = dev["bands"].get(key)
+        if not b:
+            continue
+        rc = find(b["contrasts"], "retinexformer", "classical", "psnr")
+        out.append({"key": key, "label": label, "n": b["n"], "noise_range": [round(v, 4) for v in b["input_noise_range"]],
+                    "psnr": {k: round(b["means"][k]["psnr"], 3) for k in ("classical", "retinexformer", "qgh")},
+                    "ssim": {k: round(b["means"][k]["ssim"], 4) for k in ("classical", "retinexformer", "qgh")},
+                    "natural_vs_quick_psnr": {"mean": round(rc["mean_diff"], 3), "lo": round(rc["ci_lo"], 3), "hi": round(rc["ci_hi"], 3),
+                                              "reading": verdict(rc)}})
+    return out
 
 
 def write_evaluation_json(block: dict) -> None:

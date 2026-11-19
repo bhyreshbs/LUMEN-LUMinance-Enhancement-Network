@@ -44,7 +44,15 @@
         "metric": "PSNR (dB)",
         "difference": "+7.991",
         "interval": "[+6.182, +9.813]",
-        "reading": "better"
+        "reading": "better",
+        "metric_key": "psnr",
+        "higher_is_better": true,
+        "mean": 7.99064,
+        "lo": 6.18199,
+        "hi": 9.81285,
+        "n": 15,
+        "a_better": 15,
+        "a_worse": 0
       },
       {
         "dataset": "eval15 (15 images)",
@@ -52,7 +60,15 @@
         "metric": "SSIM",
         "difference": "+0.1200",
         "interval": "[+0.0985, +0.1431]",
-        "reading": "better"
+        "reading": "better",
+        "metric_key": "ssim",
+        "higher_is_better": true,
+        "mean": 0.11995,
+        "lo": 0.09853,
+        "hi": 0.14307,
+        "n": 15,
+        "a_better": 15,
+        "a_worse": 0
       },
       {
         "dataset": "eval15 (15 images)",
@@ -60,7 +76,15 @@
         "metric": "PSNR (dB)",
         "difference": "+0.032",
         "interval": "[+0.006, +0.060]",
-        "reading": "better"
+        "reading": "better",
+        "metric_key": "psnr",
+        "higher_is_better": true,
+        "mean": 0.03157,
+        "lo": 0.00612,
+        "hi": 0.06017,
+        "n": 15,
+        "a_better": 7,
+        "a_worse": 1
       },
       {
         "dataset": "eval15 (15 images)",
@@ -68,7 +92,15 @@
         "metric": "SSIM",
         "difference": "-0.0001",
         "interval": "[-0.0005, +0.0003]",
-        "reading": "not distinguishable"
+        "reading": "not distinguishable",
+        "metric_key": "ssim",
+        "higher_is_better": true,
+        "mean": -6e-05,
+        "lo": -0.00054,
+        "hi": 0.00033,
+        "n": 15,
+        "a_better": 5,
+        "a_worse": 3
       },
       {
         "dataset": "eval15 (15 images)",
@@ -76,7 +108,15 @@
         "metric": "LPIPS",
         "difference": "+0.0000",
         "interval": "[-0.0004, +0.0005]",
-        "reading": "not distinguishable"
+        "reading": "not distinguishable",
+        "metric_key": "lpips",
+        "higher_is_better": false,
+        "mean": 0.0,
+        "lo": -0.00042,
+        "hi": 0.0005,
+        "n": 15,
+        "a_better": 3,
+        "a_worse": 3
       },
       {
         "dataset": "LOL-v2-real Test (100 images)",
@@ -84,7 +124,15 @@
         "metric": "PSNR (dB)",
         "difference": "+4.398",
         "interval": "[+2.993, +5.609]",
-        "reading": "better"
+        "reading": "better",
+        "metric_key": "psnr",
+        "higher_is_better": true,
+        "mean": 4.39779,
+        "lo": 2.99254,
+        "hi": 5.60879,
+        "n": 100,
+        "a_better": 88,
+        "a_worse": 12
       },
       {
         "dataset": "LOL-v2-real Test (100 images)",
@@ -92,7 +140,15 @@
         "metric": "PSNR (dB)",
         "difference": "+0.011",
         "interval": "[+0.003, +0.020]",
-        "reading": "better"
+        "reading": "better",
+        "metric_key": "psnr",
+        "higher_is_better": true,
+        "mean": 0.01104,
+        "lo": 0.00319,
+        "hi": 0.02025,
+        "n": 100,
+        "a_better": 22,
+        "a_worse": 5
       },
       {
         "dataset": "Dev split, low-noise (76 images)",
@@ -100,7 +156,15 @@
         "metric": "PSNR (dB)",
         "difference": "+3.547",
         "interval": "[+2.753, +4.336]",
-        "reading": "better"
+        "reading": "better",
+        "metric_key": "psnr",
+        "higher_is_better": true,
+        "mean": 3.54744,
+        "lo": 2.7525,
+        "hi": 4.33596,
+        "n": 76,
+        "a_better": 67,
+        "a_worse": 9
       },
       {
         "dataset": "Dev split, low-noise (76 images)",
@@ -108,7 +172,15 @@
         "metric": "SSIM",
         "difference": "+0.1763",
         "interval": "[+0.1551, +0.1971]",
-        "reading": "better"
+        "reading": "better",
+        "metric_key": "ssim",
+        "higher_is_better": true,
+        "mean": 0.17629,
+        "lo": 0.15512,
+        "hi": 0.19715,
+        "n": 76,
+        "a_better": 75,
+        "a_worse": 1
       },
       {
         "dataset": "Dev split, high-noise (193 images)",
@@ -116,7 +188,15 @@
         "metric": "PSNR (dB)",
         "difference": "-0.136",
         "interval": "[-0.709, +0.368]",
-        "reading": "not distinguishable"
+        "reading": "not distinguishable",
+        "metric_key": "psnr",
+        "higher_is_better": true,
+        "mean": -0.13647,
+        "lo": -0.70931,
+        "hi": 0.36751,
+        "n": 193,
+        "a_better": 130,
+        "a_worse": 63
       },
       {
         "dataset": "Dev split, high-noise (193 images)",
@@ -124,9 +204,76 @@
         "metric": "SSIM",
         "difference": "-0.0190",
         "interval": "[-0.0339, -0.0064]",
-        "reading": "worse"
+        "reading": "worse",
+        "metric_key": "ssim",
+        "higher_is_better": true,
+        "mean": -0.01899,
+        "lo": -0.03391,
+        "hi": -0.00645,
+        "n": 193,
+        "a_better": 114,
+        "a_worse": 79
       }
     ],
-    "caveat": "Every test set above, and the unseen photos, has low input noise (σ up to 0.015). The development split also contains 193 much noisier photos (σ about 0.04–0.05); on those the Natural style is not clearly better than the Quick one (and slightly worse on SSIM), so the headline numbers should not be read as a promise for very noisy photos. Highlight-safe did better than Natural on 193 of those 193 photos."
+    "caveat": "Every test set above, and the unseen photos, has low input noise (σ up to 0.015). The development split also contains 193 much noisier photos (σ about 0.04–0.05); on those the Natural style is not clearly better than the Quick one (and slightly worse on SSIM), so the headline numbers should not be read as a promise for very noisy photos. Highlight-safe did better than Natural on 193 of those 193 photos.",
+    "summary": [
+      "Retinexformer against the classical pipeline is a solid result on both benchmarks: +7.991 dB on eval15 (95 % interval [+6.182, +9.813], better on 15 of 15 images) and +4.398 dB on LOL-v2-real Test with its matching checkpoint ([+2.993, +5.609], 88 of 100 images, 43 scenes).",
+      "Quality Guided costs almost nothing on these low-noise sets: on eval15 plain Retinexformer is better on PSNR by +0.032 dB ([+0.006, +0.060]), while the SSIM difference is not distinguishable and the LPIPS difference is not distinguishable.",
+      "Very noisy inputs are the weak spot. Of the 269 dev images, 193 have an input noise σ of 0.041–0.053, against at most 0.015 in any benchmark image. On those, Retinexformer against the classical pipeline is not distinguishable on PSNR (-0.136 dB) and worse on SSIM (-0.0190). Quality Guided is better than plain Retinexformer on 193 of 193 of them (+0.418 dB PSNR).",
+      "No benchmark image and no unseen photo is that noisy, so the headline numbers describe the low-noise regime only.",
+      "On the 20 unseen photos (no ground truth) Highlight-safe clips 1.62 percentage points fewer pixels than Natural ([0.47, 3.05]; fewer on 20 of 20 photos); NIQE cannot tell the styles apart."
+    ],
+    "noise_bands": [
+      {
+        "key": "low",
+        "label": "Low-noise photos",
+        "n": 76,
+        "noise_range": [
+          0.0025,
+          0.0063
+        ],
+        "psnr": {
+          "classical": 14.419,
+          "retinexformer": 17.966,
+          "qgh": 17.956
+        },
+        "ssim": {
+          "classical": 0.5591,
+          "retinexformer": 0.7354,
+          "qgh": 0.7353
+        },
+        "natural_vs_quick_psnr": {
+          "mean": 3.547,
+          "lo": 2.753,
+          "hi": 4.336,
+          "reading": "better"
+        }
+      },
+      {
+        "key": "high",
+        "label": "Very noisy photos",
+        "n": 193,
+        "noise_range": [
+          0.0413,
+          0.0527
+        ],
+        "psnr": {
+          "classical": 14.886,
+          "retinexformer": 14.749,
+          "qgh": 15.168
+        },
+        "ssim": {
+          "classical": 0.1919,
+          "retinexformer": 0.1729,
+          "qgh": 0.2136
+        },
+        "natural_vs_quick_psnr": {
+          "mean": -0.136,
+          "lo": -0.709,
+          "hi": 0.368,
+          "reading": "not distinguishable"
+        }
+      }
+    ]
   }
 }

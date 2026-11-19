@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>LUMEN · Give dark photos their light back</title>
+  <link rel="stylesheet" href="proto.css">
+  <script src="proto.js" type="module"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="bar">
+    <a class="mark" href="landing.html" aria-label="LUMEN, home">
+      <svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11.25" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path class="mark__lit" d="M13 1.75a11.25 11.25 0 0 1 0 22.5z"/></svg>
+      <span>LUMEN</span>
+    </a>
+    <nav class="bar__nav" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#evidence">Evidence</a>
+      <button class="icon-btn" type="button" id="themeBtn" aria-label="Switch to the light theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main id="main" class="hero">
+    <section class="hero__copy" aria-labelledby="heroTitle">
+      <h1 class="display" id="heroTitle">Give dark photos <em>their light</em> back.</h1>
+      <p class="lede">Upload a photo taken in low light. LUMEN restores its brightness, colour and detail in a few seconds.</p>
+
+      <label class="drop" for="file">
+        <span class="drop__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
+        <span class="drop__text"><strong>Drop a photo here</strong><span>or paste it from your clipboard</span></span>
+        <span class="btn btn--light">Choose a photo</span>
+        <small class="drop__spec">JPEG, PNG, WebP, BMP or TIFF, up to 20 MB</small>
+      </label>
+      <input type="file" id="file" class="sr-only" accept="image/*">
+
+      <div class="examples">
+        <p>No photo to hand? Try one of ours.</p>
+        <ul>
+          <li><button class="example" type="button" data-photo="coffee_dark"><img src="/app/web/static/img/landing/coffee_dark_before.jpg" alt=""><span>Café table</span></button></li>
+          <li><button class="example" type="button" data-photo="chelsea_extremely_dark"><img src="/app/web/static/img/landing/chelsea_extremely_dark_before.jpg" alt=""><span>Very dark room</span></button></li>
+          <li><button class="example" type="button" data-photo="astronaut_uneven_light"><img src="/app/web/static/img/landing/astronaut_uneven_light_before.jpg" alt=""><span>Uneven light</span></button></li>
+          <li><button class="example" type="button" data-photo="rocket_night_highlights"><img src="/app/web/static/img/landing/rocket_night_highlights_before.jpg" alt=""><span>Night lights</span></button></li>
+        </ul>
+      </div>
+
+      <p class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/></svg>
+        Photos are restored on our server and deleted as soon as you have the result.</p>
+    </section>
+
+    <figure class="stagebox" id="stagebox">
+      <div class="print" id="print" role="img" aria-label="A dark photo of a café table. Where the light falls you see the same photo restored by LUMEN.">
+        <img class="print__before" id="printBefore" src="/app/web/static/img/landing/coffee_dark_before.jpg" alt="">
+        <img class="print__after" id="printAfter" src="/app/web/static/img/landing/coffee_dark_after.jpg" alt="">
+        <span class="print__ring" aria-hidden="true"></span>
+      </div>
+      <figcaption class="stagebox__caption">
+        <span>Move the light across the photo. Inside it is the same photo, restored by LUMEN.</span>
+        <span class="pick" role="group" aria-label="Choose an example photo">
+          <button type="button" aria-pressed="true" data-photo="coffee_dark" aria-label="Café table"></button>
+          <button type="button" aria-pressed="false" data-photo="chelsea_extremely_dark" aria-label="Very dark room"></button>
+          <button type="button" aria-pressed="false" data-photo="astronaut_uneven_light" aria-label="Uneven light"></button>
+          <button type="button" aria-pressed="false" data-photo="rocket_night_highlights" aria-label="Night lights"></button>
+        </span>
+      </figcaption>
+    </figure>
+  </main>
+</body>
+</html>

@@ -11,6 +11,7 @@ Audit date 2026-11-06; not legal advice. Full checkpoint provenance and the redi
 | Zero-DCE++ checkpoint | not included | - | academic research only, CC BY-NC 4.0 | **No** |
 | LOL / LOL-v2 datasets | not included (`data/` is ignored); `data/splits/*.txt` lists file names only | - | terms unstated | No |
 | Example images | `app/examples/*.jpg`, synthetic low-light derivatives | - | CC0 / public domain sources (`app/examples/SOURCES.md`) | Yes |
+| Instrument Serif font | `app/web/static/fonts/instrument-serif-{regular,italic}.woff2` (Latin subset of the upstream TTF files, converted to WOFF2) | - | SIL Open Font License 1.1, (c) 2022 The Instrument Serif Project Authors; full text in `app/web/static/fonts/OFL.txt` | Yes (subset, under the OFL; the upstream licence declares no Reserved Font Name) |
 | Hackathon problem statement | not included (organisers' PDF and the P1 excerpt are git-ignored) | - | organisers' document; no licence stated | **No** |
 
 **Repository status:** private. LUMEN's own code has **no licence file** by deliberate choice, so no reuse

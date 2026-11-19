@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Evidence · LUMEN</title>
+  <meta name="description" content="How well LUMEN restores photos, and how sure we can be about each number.">
+  <meta name="theme-color" content="#0a0b0d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f3f0e9" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/lumen.css">
+  <script src="/static/js/theme-boot.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="bar">
+    <a class="mark" href="/" aria-label="LUMEN, home">
+      <svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11.25" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path class="mark__lit" d="M13 1.75a11.25 11.25 0 0 1 0 22.5z"/></svg>
+      <span>LUMEN</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="/how">How it works</a>
+      <a href="/evidence" aria-current="page">Evidence</a>
+      <button class="icon-btn" type="button" id="themeBtn" aria-label="Switch theme">
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main id="main">
+    <div class="page-head">
+      <h1 class="h1">The <em>evidence</em></h1>
+      <p class="lede">How well LUMEN restores photos, measured on public test photos that come with a properly exposed reference,
+        and how sure we can be about each number.</p>
+    </div>
+
+    <div class="content">
+      <section class="section" aria-labelledby="shortTitle">
+        <h2 class="h2" id="shortTitle">In short</h2>
+        <ul id="summary"><li class="skeleton" aria-hidden="true"></li><li class="skeleton" aria-hidden="true"></li></ul>
+      </section>
+
+      <section class="section" aria-labelledby="headTitle">
+        <h2 class="h2" id="headTitle">Accuracy on the main test set</h2>
+        <p id="headSub">Loading…</p>
+        <figure class="chart" id="headChart"></figure>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="All results on the main test set"><table id="evalTable"><caption class="sr-only">All results on the main test set</caption></table></div>
+        <p class="note" id="evalNote"></p>
+      </section>
+
+      <section class="section" aria-labelledby="trustTitle">
+        <h2 class="h2" id="trustTitle">How sure can we be?</h2>
+        <p class="note" id="trustIntro"></p>
+        <div class="verdicts" aria-hidden="true"><span><i class="v-good"></i>better</span><span><i class="v-flat"></i>not distinguishable</span><span><i class="v-bad"></i>worse</span></div>
+        <div id="forest"></div>
+        <div id="trust" hidden>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Differences between methods, with 95 % intervals"><table id="trustTable"><caption class="sr-only">Differences between methods, with 95 % intervals</caption></table></div>
+          <p class="note" id="trustCaveat"></p>
+        </div>
+      </section>
+
+      <section class="section" id="noise" aria-labelledby="noiseTitle">
+        <h2 class="h2" id="noiseTitle">Where LUMEN is weakest: very grainy photos</h2>
+        <p id="noiseText">Loading…</p>
+        <figure class="chart" id="noiseChart"></figure>
+      </section>
+
+      <section class="section" aria-labelledby="ablTitle">
+        <h2 class="h2" id="ablTitle">What each part contributes</h2>
+        <p>Each bar removes one part and measures again on the main test set. A shorter bar means that part mattered.</p>
+        <figure class="chart" id="ablChart"></figure>
+      </section>
+
+      <section class="section" aria-labelledby="findTitle">
+        <h2 class="h2" id="findTitle">Findings</h2>
+        <ul id="findings"></ul>
+      </section>
+
+      <section class="section" aria-labelledby="honestTitle">
+        <h2 class="h2" id="honestTitle">Limits, ethics and licences</h2>
+        <ul>
+          <li>The main test set has 15 photos from one camera setup; another 100 come from a second public set. No claim is made about other cameras.</li>
+          <li>Test photos were never used for tuning. 91 photos of the second public set duplicate the main model's training photos, so that set is scored only with the model trained without them.</li>
+          <li>Restorations can change colour and fine detail. They are not forensic evidence.</li>
+          <li>The model weights and training data come from third parties; their licences and open questions are listed in the project's third-party notices.</li>
+        </ul>
+        <h3 class="h4">Reproduce these numbers</h3>
+        <pre tabindex="0" role="region" aria-label="Commands to reproduce the numbers"><code>python scripts/evaluate.py --low data/LOL/eval15/low --high data/LOL/eval15/high --deep-models retinexformer
+python scripts/hardening_study.py all</code></pre>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <span>Photos are processed and not saved.</span>
+      <nav aria-label="More"><a href="/">Restore a photo</a><a href="/how">How it works</a><a href="/evidence">Evidence</a><a href="/details">Technical details</a></nav>
+    </div>
+  </footer>
+  <script src="/static/js/evidence.js" type="module"></script>
+</body>
+</html>

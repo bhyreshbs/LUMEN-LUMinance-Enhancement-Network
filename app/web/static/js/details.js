@@ -1,4 +1,6 @@
-// LUMEN "Under the hood" page: last restoration, evaluation, research lab, system status.
+// LUMEN technical details page: last restoration, headline table, research lab, system status.
+// The full evaluation with intervals lives on the Evidence page (evidence.js).
+import { initShell } from "./shell.js";
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, props = {}, ...children) => {
@@ -69,16 +71,6 @@ async function renderEvaluation() {
   $("evalTable").append(table(["Method", ...ev.columns.map((c) => c.label)],
     ev.methods.map((m) => ({ best: m.best, cells: [m.name, ...ev.columns.map((c) => fmt(m[c.key], c.digits))] }))));
   $("evalNote").textContent = ev.note;
-  $("ablationTable").append(table(["Variant", "PSNR", "SSIM", "LPIPS"],
-    ev.ablation.map((a) => ({ cells: [a.part, fmt(a.psnr, 2), fmt(a.ssim, 4), fmt(a.lpips, 4)] }))));
-  $("findings").replaceChildren(...ev.findings.map((f) => el("li", { text: f })));
-  if (ev.robustness && ev.robustness.rows.length) {      // intervals and the noise caveat, generated from the study results
-    $("trustIntro").textContent = ev.robustness.intro;
-    $("trustTable").append(table(["Test set", "Comparison (A − B)", "Metric", "Difference (95 % interval)", "A is"],
-      ev.robustness.rows.map((r) => ({ cells: [r.dataset, r.comparison, r.metric, `${r.difference} ${r.interval}`, r.reading] })), 3));
-    $("trustCaveat").textContent = ev.robustness.caveat;
-    $("trust").hidden = false;
-  }
 }
 
 // ------------------------------------------------------------------ system + research lab
@@ -163,6 +155,7 @@ function trackSections() {
 }
 
 async function boot() {
+  initShell();
   renderLast();
   trackSections();
   renderEvaluation().catch(() => ($("evalSub").textContent = "The evaluation data could not be loaded."));

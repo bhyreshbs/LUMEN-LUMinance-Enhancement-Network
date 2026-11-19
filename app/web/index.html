@@ -3,174 +3,224 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>LUMEN · Restore dark photos</title>
+  <title>LUMEN · Give dark photos their light back</title>
   <meta name="description" content="Upload a photo taken in low light and LUMEN restores its brightness, colour and detail.">
-  <meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#f5f6fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0a0b0d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f3f0e9" media="(prefers-color-scheme: light)">
   <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="/static/fonts/instrument-serif-regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/lumen.css">
+  <link rel="modulepreload" href="/static/js/workspace.js">
+  <link rel="modulepreload" href="/static/js/landing.js">
+  <link rel="modulepreload" href="/static/js/develop.js">
+  <link rel="modulepreload" href="/static/js/shell.js">
+  <script src="/static/js/theme-boot.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
 
-  <header class="topbar">
-    <a class="brand" href="/" aria-label="LUMEN home">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#f6a51c"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="#151821"/><path d="M7 21h18" stroke="#3a4157" stroke-width="2" stroke-linecap="round"/><path d="M10 21a6 6 0 0 1 12 0" fill="url(#lg)"/><path d="M16 8.5v2.6M8.6 12.2l1.8 1.8M23.4 12.2l-1.8 1.8" stroke="url(#lg)" stroke-width="2" stroke-linecap="round"/></svg>
+  <header class="bar">
+    <a class="mark" href="/" aria-label="LUMEN, home">
+      <svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11.25" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path class="mark__lit" d="M13 1.75a11.25 11.25 0 0 1 0 22.5z"/></svg>
       <span>LUMEN</span>
     </a>
-    <a class="navlink" href="/details">How it works</a>
+    <nav class="nav" aria-label="Main">
+      <a href="/how">How it works</a>
+      <a href="/evidence">Evidence</a>
+      <button class="icon-btn" type="button" id="themeBtn" aria-label="Switch theme">
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+      </button>
+    </nav>
   </header>
 
-  <main id="main" class="app">
-    <!-- Empty state: what LUMEN does + how to start -->
+  <main id="main">
+    <!-- First view: what LUMEN does, shown on a real example you can light yourself -->
     <section class="hero" id="viewEmpty" aria-labelledby="heroTitle">
-      <h1 id="heroTitle">Bring your dark photos <span class="glow">back to light.</span></h1>
-      <p class="lede">Upload a photo taken in low light. LUMEN restores its brightness, colour and detail in a few seconds.</p>
+      <div class="hero__copy">
+        <h1 class="display" id="heroTitle">Give dark photos <em>their light</em> back.</h1>
+        <p class="lede">Upload a photo taken in low light. LUMEN restores its brightness, colour and detail in a few seconds.</p>
 
-      <label class="dropzone" id="dropzone" for="fileInput" tabindex="0">
-        <span class="dropzone__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
-        </span>
-        <strong>Drop a photo here</strong>
-        <span>or <span class="browse">choose a file</span></span>
-        <small id="limitsText">JPEG, PNG, WebP, BMP or TIFF · up to 20 MB</small>
-      </label>
-      <input type="file" id="fileInput" class="sr-only" accept="image/jpeg,image/png,image/webp,image/bmp,image/tiff,.jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff">
+        <label class="drop" id="dropzone" for="fileInput" tabindex="0">
+          <span class="drop__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
+          <span class="drop__text"><strong>Drop a photo here</strong><span>or paste it from your clipboard</span></span>
+          <span class="btn btn--light">Choose a photo</span>
+          <small class="drop__spec" id="limitsText">JPEG, PNG, WebP, BMP or TIFF, up to 20 MB</small>
+        </label>
+        <input type="file" id="fileInput" class="sr-only" accept="image/jpeg,image/png,image/webp,image/bmp,image/tiff,.jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff">
 
-      <div class="examples" id="examplesBlock" hidden>
-        <p>No photo handy? Try one of these:</p>
-        <ul id="examples"></ul>
+        <div class="examples" id="examplesBlock" hidden>
+          <p>No photo to hand? Try one of ours.</p>
+          <ul id="examples"></ul>
+        </div>
+        <div class="notice" id="serviceNotice" role="status" hidden></div>
+
+        <p class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/></svg>
+          Photos are restored on our server and deleted as soon as you have the result.</p>
       </div>
-      <div class="notice" id="serviceNotice" role="status" hidden></div>
+
+      <figure class="slab" id="slab">
+        <div class="print" id="print" role="img" aria-label="A dark photo. Where the light falls you see the same photo restored by LUMEN.">
+          <img id="printBefore" src="/static/img/landing/coffee_dark_before.jpg" width="600" height="400" alt="" fetchpriority="high" decoding="async">
+          <img class="print__after" id="printAfter" src="/static/img/landing/coffee_dark_after.jpg" width="600" height="400" alt="" decoding="async" fetchpriority="low">
+          <canvas id="printCanvas" aria-hidden="true"></canvas>
+          <span class="print__dot" aria-hidden="true"></span>
+        </div>
+        <figcaption class="slab__caption">
+          <span>Move the light across the photo. Inside it is the same photo, restored by LUMEN.</span>
+          <span class="pick" id="printPick" role="group" aria-label="Choose an example photo"></span>
+        </figcaption>
+      </figure>
     </section>
 
-    <!-- Workspace: photo on the left, the few controls needed on the right -->
-    <section class="workspace" id="viewWorkspace" aria-label="Restoration workspace" hidden>
+    <!-- Workspace: the photo on the darkroom, the few controls needed beside it -->
+    <section class="work" id="viewWorkspace" aria-label="Restoration workspace" hidden>
       <h1 class="sr-only">Restore your photo</h1>
-      <div class="stage" id="stage">
-        <div class="viewer zoomhost" id="viewer">
-          <img id="imgAfter" alt="Your photo">
-          <div class="viewer__ov" id="ovLayer" aria-hidden="true" hidden></div>
-          <div class="viewer__before" aria-hidden="true"><img id="imgBefore" alt=""></div>
-          <div class="viewer__divider">
-            <button class="viewer__handle" id="handle" type="button" role="slider" aria-label="Compare original and restored photo"
-                    aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50% original">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6-6 6 6 6"/><path d="m15 6 6 6-6 6"/></svg>
-            </button>
+      <div class="work__main">
+        <div class="darkroom">
+          <div class="darkroom__top" id="vtools" hidden>
+            <div class="seg" role="tablist" aria-label="How to look at the result" id="modes">
+              <button type="button" role="tab" data-mode="compare" aria-selected="true">Before / after</button>
+              <button type="button" role="tab" data-mode="lens" aria-selected="false">Lens</button>
+              <button type="button" role="tab" data-mode="develop" aria-selected="false">Develop</button>
+              <button type="button" role="tab" data-mode="trio" aria-selected="false" id="compareBtn">All styles</button>
+            </div>
+            <div class="darkroom__tools">
+              <span id="vtoolsSep" hidden></span>
+              <button class="toggle" id="changesBtn" type="button" aria-pressed="false" hidden>What changed</button>
+              <div class="zoom" role="toolbar" aria-label="Zoom">
+                <button id="zoomOut" type="button" aria-label="Zoom out" title="Zoom out" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+                <output id="zoomLabel">100%</output>
+                <button id="zoomIn" type="button" aria-label="Zoom in" title="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button>
+                <button id="zoomFit" type="button" aria-label="Fit to window" title="Fit to window" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/></svg></button>
+              </div>
+            </div>
           </div>
-          <span class="tag tag--before">Original</span>
-          <span class="tag tag--after">Restored</span>
-        </div>
 
-        <div class="placeholder" id="noPreview" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="9" r="1.5"/></svg>
-          <strong>No preview for this file</strong>
-          <span>Your browser can't display it, but you can still try restoring it.</span>
-        </div>
+          <div class="stage" id="stage">
+            <div class="viewer zoomhost" id="viewer">
+              <img id="imgAfter" alt="Your photo">
+              <div class="viewer__ov" id="ovLayer" aria-hidden="true" hidden></div>
+              <div class="viewer__before" aria-hidden="true"><img id="imgBefore" alt=""></div>
+              <div class="viewer__divider">
+                <button class="viewer__handle" id="handle" type="button" role="slider" aria-label="Compare original and restored photo"
+                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50% original">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6-6 6 6 6"/><path d="m15 6 6 6-6 6"/></svg>
+                </button>
+              </div>
+              <span class="lens-ring" aria-hidden="true"><span>Original</span></span>
+              <span class="tag tag--before">Original</span>
+              <span class="tag tag--after">Restored</span>
+            </div>
 
-        <div class="trio" id="trio" hidden></div>
+            <div class="devview zoomhost" id="devView" hidden>
+              <canvas id="devCanvas" role="img" aria-label="Your photo, developed to the chosen amount"></canvas>
+            </div>
 
-        <div class="vtools" id="vtools" role="toolbar" aria-label="Photo tools" hidden>
-          <button class="vtool" id="zoomOut" type="button" aria-label="Zoom out" title="Zoom out" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>
-          </button>
-          <output class="vtools__zoom" id="zoomLabel">100%</output>
-          <button class="vtool" id="zoomIn" type="button" aria-label="Zoom in" title="Zoom in">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>
-          </button>
-          <button class="vtool" id="zoomFit" type="button" aria-label="Fit to window" title="Fit to window" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/></svg>
-          </button>
-          <span class="vtools__sep" id="vtoolsSep" aria-hidden="true" hidden></span>
-          <button class="vtool vtool--text" id="changesBtn" type="button" aria-pressed="false" hidden>What changed</button>
-        </div>
+            <div class="placeholder" id="noPreview" hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="9" r="1.5"/></svg>
+              <strong>No preview for this file</strong>
+              <span>Your browser can't display it, but you can still restore it.</span>
+            </div>
 
-        <div class="overlay" id="overlay" hidden>
-          <div class="overlay__card" role="status" aria-live="polite">
-            <div class="spinner" aria-hidden="true"></div>
-            <p class="overlay__title" id="overlayTitle">Restoring your photo…</p>
-            <p class="overlay__sub"><span id="elapsed">0</span> s · usually a few seconds</p>
-            <p class="overlay__queue" id="queueNote" hidden></p>
-            <ol class="steps" id="steps" aria-hidden="true" hidden></ol>
-            <div class="progress" aria-hidden="true"><span></span></div>
+            <div class="trio" id="trio" hidden></div>
+
+            <div class="veil" id="overlay" hidden>
+              <div class="veil__card" role="status" aria-live="polite">
+                <span class="veil__lamp" aria-hidden="true"></span>
+                <p class="veil__title" id="overlayTitle">Restoring your photo</p>
+                <p class="veil__sub"><span id="elapsed">0</span> s so far</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="develop" id="developBar" hidden>
+            <div class="develop__ctl">
+              <div class="develop__row"><label for="developRange">Develop</label><output id="developOut" for="developRange">100%</output></div>
+              <input class="range" type="range" id="developRange" min="0" max="100" value="100" step="1" aria-describedby="developNote">
+              <p class="develop__note" id="developNote">Applies the light LUMEN added, pixel by pixel, from none of it to all of it.</p>
+            </div>
+            <figure class="histo">
+              <p class="histo__axis">Brightness, from dark to bright</p>
+              <svg viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"><path class="h-in" id="hIn" d=""/><path class="h-now" id="hNow" d=""/><path class="h-out" id="hOut" d=""/></svg>
+              <figcaption><span class="key key--in">Original</span><span class="key key--now">Now</span><span class="key key--out">Restored</span></figcaption>
+            </figure>
           </div>
         </div>
+
+        <p class="queue" id="queueNote" role="status" hidden></p>
+        <ol class="strip" id="steps" aria-label="What is happening, step by step" hidden></ol>
+        <p class="note" id="compareHint" hidden>Drag across the photo to compare. Scroll, pinch or use + and − to zoom; double-click to reset.</p>
       </div>
 
-      <aside class="panel" aria-label="Restoration options">
-        <div class="file">
-          <img class="file__thumb" id="fileThumb" alt="">
-          <div class="file__text">
-            <p class="file__name" id="fileName">photo.jpg</p>
-            <p class="file__meta" id="fileMeta"></p>
-          </div>
-          <button class="btn btn--ghost" id="changeBtn" type="button">Change</button>
-        </div>
-
-        <fieldset class="styles" id="styles">
-          <legend>Style</legend>
-        </fieldset>
-
-        <div class="actions">
-          <button class="btn btn--primary btn--block" id="restoreBtn" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4 7 17M17 7l1.4-1.4"/><circle cx="12" cy="12" r="4"/></svg>
-            <span id="restoreLabel">Restore photo</span>
-          </button>
-
-          <div class="result" id="result" hidden>
-            <p class="success" id="successText">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-              <span>Restored</span>
-            </p>
-            <a class="btn btn--primary btn--block" id="downloadBtn" href="#" download>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12"/><path d="m6 10 6 6 6-6"/><path d="M4 20h16"/></svg>
-              Download
-            </a>
-            <p class="result__meta" id="resultMeta"></p>
+      <aside class="rail" aria-label="Your restoration">
+        <div class="card">
+          <div class="file">
+            <img class="file__thumb" id="fileThumb" alt="">
+            <div class="file__text"><p class="file__name" id="fileName">photo.jpg</p><p class="file__meta" id="fileMeta"></p></div>
+            <button class="btn btn--quiet btn--small" id="changeBtn" type="button">Change</button>
           </div>
 
-          <button class="btn btn--block" id="cancelBtn" type="button" hidden>Cancel</button>
-        </div>
+          <fieldset class="styles" id="styles"><legend>Style</legend></fieldset>
 
-        <div class="alert" id="alert" role="alert" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-          <div>
-            <p class="alert__title" id="alertTitle">Something went wrong</p>
-            <p class="alert__text" id="alertText"></p>
+          <div class="hint" id="noiseHint" role="note" hidden>
+            <p>This photo is very grainy. In our tests on 193 photos this grainy, Highlight-safe came out closer to the reference than Natural on every one.</p>
+            <button class="btn btn--small" id="noiseHintBtn" type="button">Use Highlight-safe</button>
           </div>
-          <div class="alert__actions" id="alertActions"></div>
+
+          <div class="actions">
+            <button class="btn btn--light btn--block" id="restoreBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4 7 17M17 7l1.4-1.4"/></svg>
+              <span id="restoreLabel">Restore photo</span>
+            </button>
+            <div class="result" id="result" hidden>
+              <p class="success" id="successText"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Restored</span></p>
+              <a class="btn btn--light btn--block" id="downloadBtn" href="#" download>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+                Download photo
+              </a>
+              <div class="actions__row" id="tools"><button class="btn btn--small" id="sideBtn" type="button">Save side by side</button><button class="btn btn--small" id="closerBtn" type="button">Look closer</button></div>
+              <p class="result__meta" id="resultMeta"></p>
+            </div>
+            <button class="btn btn--block" id="cancelBtn" type="button" hidden>Cancel</button>
+          </div>
+
+          <div class="alert" id="alert" role="alert" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+            <div><p class="alert__title" id="alertTitle">Something went wrong</p><p class="alert__text" id="alertText"></p></div>
+            <div class="alert__actions" id="alertActions"></div>
+          </div>
         </div>
 
-        <div class="tools" id="tools" hidden>
-          <button class="btn" id="compareBtn" type="button">Compare all styles</button>
-          <button class="btn" id="sideBtn" type="button">Save side by side</button>
-        </div>
+        <section class="card" id="report" aria-labelledby="reportTitle" hidden>
+          <h2 class="h2" id="reportTitle">This photo</h2>
+          <ul class="chips" id="chips" aria-label="What LUMEN measured"></ul>
+          <p class="report__text" id="reportText"></p>
+        </section>
 
-        <section class="legend" id="legend" aria-labelledby="legendTitle" hidden>
-          <h2 class="report__title" id="legendTitle">Highlighted areas</h2>
+        <section class="card" id="legend" aria-labelledby="legendTitle" hidden>
+          <h2 class="h3" id="legendTitle">Highlighted areas</h2>
           <ul class="legend__list" id="legendList"></ul>
         </section>
-
-        <section class="report" id="report" aria-labelledby="reportTitle" hidden>
-          <h2 class="report__title" id="reportTitle">What LUMEN did</h2>
-          <p class="report__text" id="reportText"></p>
-          <details class="report__steps">
-            <summary>Show steps</summary>
-            <ol class="steps steps--log" id="stepsLog"></ol>
-          </details>
-        </section>
-
-        <p class="hint" id="compareHint" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6-6 6 6 6"/><path d="m15 6 6 6-6 6"/></svg>
-          Drag across the photo to compare before and after. Scroll, pinch or use the + and − buttons to zoom.
-        </p>
       </aside>
     </section>
   </main>
 
+  <dialog class="drawer" id="mapsDialog" aria-labelledby="mapsTitle">
+    <div class="drawer__in">
+      <div class="drawer__head">
+        <h2 class="h2" id="mapsTitle">Look closer</h2>
+        <button class="icon-btn" id="mapsClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div id="mapsBody"></div>
+    </div>
+  </dialog>
+
   <footer class="footer">
-    Photos are processed and not saved. Curious about the technology?
-    <a href="/details">See how LUMEN works</a>.
+    <div class="wrap">
+      <span>Photos are processed and not saved.</span>
+      <nav aria-label="More"><a href="/how">How it works</a><a href="/evidence">Evidence</a><a href="/details">Technical details</a></nav>
+    </div>
   </footer>
 
   <div class="sr-only" id="live" aria-live="polite"></div>

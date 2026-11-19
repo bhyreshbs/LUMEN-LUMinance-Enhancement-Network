@@ -1,0 +1,84 @@
+{
+  "made_by": "scripts/make_landing_assets.py",
+  "style": "Natural",
+  "checkpoint": "retinexformer_LOL_v1.pth",
+  "device": "cuda",
+  "photos": [
+    {
+      "id": "astronaut_uneven_light",
+      "title": "Uneven light",
+      "width": 512,
+      "height": 512,
+      "before": "/static/img/landing/astronaut_uneven_light_before.jpg",
+      "after": "/static/img/landing/astronaut_uneven_light_after.jpg",
+      "reported": {
+        "category": "low_light",
+        "mean_brightness": 0.1221,
+        "input_noise": 0.019,
+        "restore_ms": 6409.0,
+        "highlight_colour_kept": false
+      },
+      "jpeg_quality": {
+        "before": 85,
+        "after": 85
+      }
+    },
+    {
+      "id": "chelsea_extremely_dark",
+      "title": "Very dark room",
+      "width": 451,
+      "height": 300,
+      "before": "/static/img/landing/chelsea_extremely_dark_before.jpg",
+      "after": "/static/img/landing/chelsea_extremely_dark_after.jpg",
+      "reported": {
+        "category": "low_light",
+        "mean_brightness": 0.0809,
+        "input_noise": 0.0367,
+        "restore_ms": 5694.2,
+        "highlight_colour_kept": false
+      },
+      "jpeg_quality": {
+        "before": 85,
+        "after": 85
+      }
+    },
+    {
+      "id": "coffee_dark",
+      "title": "Café table",
+      "width": 600,
+      "height": 400,
+      "before": "/static/img/landing/coffee_dark_before.jpg",
+      "after": "/static/img/landing/coffee_dark_after.jpg",
+      "reported": {
+        "category": "low_light",
+        "mean_brightness": 0.1305,
+        "input_noise": 0.0211,
+        "restore_ms": 5514.7,
+        "highlight_colour_kept": false
+      },
+      "jpeg_quality": {
+        "before": 85,
+        "after": 85
+      }
+    },
+    {
+      "id": "rocket_night_highlights",
+      "title": "Night lights",
+      "width": 640,
+      "height": 427,
+      "before": "/static/img/landing/rocket_night_highlights_before.jpg",
+      "after": "/static/img/landing/rocket_night_highlights_after.jpg",
+      "reported": {
+        "category": "low_light",
+        "mean_brightness": 0.0869,
+        "input_noise": 0.0277,
+        "restore_ms": 5612.0,
+        "highlight_colour_kept": false
+      },
+      "jpeg_quality": {
+        "before": 85,
+        "after": 85
+      }
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>How it works · LUMEN</title>
+  <meta name="description" content="What happens to your photo, what each style does, what is stored, and the limits.">
+  <meta name="theme-color" content="#0a0b0d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f3f0e9" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/lumen.css">
+  <script src="/static/js/theme-boot.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="bar">
+    <a class="mark" href="/" aria-label="LUMEN, home">
+      <svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11.25" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path class="mark__lit" d="M13 1.75a11.25 11.25 0 0 1 0 22.5z"/></svg>
+      <span>LUMEN</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="/how" aria-current="page">How it works</a>
+      <a href="/evidence">Evidence</a>
+      <button class="icon-btn" type="button" id="themeBtn" aria-label="Switch theme">
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main id="main">
+    <div class="page-head">
+      <h1 class="h1">How LUMEN <em>works</em></h1>
+      <p class="lede">A photo taken in low light still holds most of its detail; it is just too dark to see. LUMEN finds that
+        detail and brings the light back up, without inventing what was not there.</p>
+    </div>
+
+    <div class="content">
+      <section class="section" aria-labelledby="flowTitle">
+        <h2 class="h2" id="flowTitle">What happens to your photo</h2>
+        <ol class="flowline" aria-label="The steps, in order">
+          <li><b>You choose a photo</b><span>It is sent to the LUMEN server and kept in a temporary file while it is restored.</span></li>
+          <li><b>Read and checked</b><span>Format, size and integrity are checked. Photos larger than <span class="js-max-side">768</span> px on the longest side are scaled down first.</span></li>
+          <li><b>The light is measured</b><span>Average brightness, how unevenly the light falls, and how much grain there is.</span></li>
+          <li class="is-light"><b>Restored</b><span>The style you chose brings back brightness, colour and detail.</span></li>
+          <li><b>Bright areas checked</b><span>Windows and lamps keep their colour; Highlight-safe also softens clipped areas and grain where needed.</span></li>
+          <li><b>Back to you</b><span>The result comes straight back to your browser and the temporary file is deleted.</span></li>
+        </ol>
+        <p class="note">While it works, the workspace shows each of these steps as it really finishes, with the time it took.</p>
+      </section>
+
+      <section class="section" aria-labelledby="stylesTitle">
+        <h2 class="h2" id="stylesTitle">The three styles</h2>
+        <div class="grid3">
+          <div class="mini"><h3 class="h4">Natural</h3><p>A neural network restores light, colour and detail in one pass. The most faithful choice for most photos.</p>
+            <p class="tech">Retinexformer (ICCV 2023), official LOL-v1 weights, plus a highlight colour fix for near-clipped areas.</p></div>
+          <div class="mini"><h3 class="h4">Highlight-safe</h3><p>The same network, then targeted fixes only where its output still needs them: clipped lamps, windows and grain. If nothing needs fixing, the result is identical to Natural.</p>
+            <p class="tech">Quality-Guided Hybrid: feathered masks, highlight roll-off and guided-filter denoising, thresholds calibrated on a separate development split.</p></div>
+          <div class="mini"><h3 class="h4">Quick</h3><p>Classic image processing, no neural network. Fast and light, but less accurate on very dark photos.</p>
+            <p class="tech">Illumination estimate, Retinex brightening, illumination-aware denoising, CLAHE and colour correction, adapted to each photo.</p></div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="storeTitle">
+        <h2 class="h2" id="storeTitle">What is and is not stored</h2>
+        <ul class="facts">
+          <li class="is-no"><span><b>Your photo is not kept.</b> The upload is deleted as soon as the request ends, also when it fails.</span></li>
+          <li class="is-no"><span><b>The result is not kept.</b> It is sent back in the response and never written to disk.</span></li>
+          <li><span><b>In your browser only:</b> the technical details of your last restoration (cleared when you close the tab), and your theme choice.</span></li>
+          <li class="is-no"><span><b>No accounts, no cookies, no analytics.</b> The hosting provider keeps standard request logs (time, address, page), not photos.</span></li>
+        </ul>
+      </section>
+
+      <section class="section" aria-labelledby="limitsTitle">
+        <h2 class="h2" id="limitsTitle">Limits</h2>
+        <ul>
+          <li><b>Very grainy photos.</b> On photos far grainier than the test sets, Natural is not clearly better than Quick; Highlight-safe does better there. <a class="link" href="/evidence#noise">See the evidence</a>.</li>
+          <li><b>Small test set.</b> The headline numbers come from 15 test photos from one camera setup, so they are a guide, not a guarantee.</li>
+          <li><b>Not forensic.</b> Restoration and denoising can change colour and fine detail; do not use results as evidence.</li>
+          <li><b>Size.</b> Photos are restored at up to <span class="js-max-side">768</span> px on the longest side.</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <span>Photos are processed and not saved.</span>
+      <nav aria-label="More"><a href="/">Restore a photo</a><a href="/how">How it works</a><a href="/evidence">Evidence</a><a href="/details">Technical details</a></nav>
+    </div>
+  </footer>
+  <script src="/static/js/how.js" type="module"></script>
+</body>
+</html>

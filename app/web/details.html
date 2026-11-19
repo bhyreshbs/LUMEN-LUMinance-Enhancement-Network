@@ -3,26 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Under the hood · LUMEN</title>
-  <meta name="description" content="How LUMEN restores low-light photos: methods, evaluation results, research comparisons and system status.">
-  <meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#f5f6fa" media="(prefers-color-scheme: light)">
+  <title>Technical details · LUMEN</title>
+  <meta name="description" content="Technical details of LUMEN: your last restoration, the research lab and the state of this server.">
+  <meta name="theme-color" content="#0a0b0d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f3f0e9" media="(prefers-color-scheme: light)">
   <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/lumen.css">
+  <script src="/static/js/theme-boot.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
-  <header class="topbar">
-    <a class="brand" href="/" aria-label="LUMEN home">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#f6a51c"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="#151821"/><path d="M7 21h18" stroke="#3a4157" stroke-width="2" stroke-linecap="round"/><path d="M10 21a6 6 0 0 1 12 0" fill="url(#lg)"/><path d="M16 8.5v2.6M8.6 12.2l1.8 1.8M23.4 12.2l-1.8 1.8" stroke="url(#lg)" stroke-width="2" stroke-linecap="round"/></svg>
+  <header class="bar">
+    <a class="mark" href="/" aria-label="LUMEN, home">
+      <svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11.25" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path class="mark__lit" d="M13 1.75a11.25 11.25 0 0 1 0 22.5z"/></svg>
       <span>LUMEN</span>
     </a>
-    <a class="navlink" href="/">Restore a photo</a>
+    <nav class="nav" aria-label="Main">
+      <a href="/how">How it works</a>
+      <a href="/evidence">Evidence</a>
+      <button class="icon-btn" type="button" id="themeBtn" aria-label="Switch theme">
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+      </button>
+    </nav>
   </header>
-
-  <main id="main" class="app doc">
+<main id="main" class="doc">
     <nav class="doc__nav" aria-label="Sections">
-      <a class="back" href="/">← Back to LUMEN</a>
       <a href="#how">How it works</a>
       <a href="#last">Your last photo</a>
       <a href="#evaluation">Evaluation</a>
@@ -33,9 +39,9 @@
 
     <div class="doc__body">
       <div>
-        <h1>Under the hood</h1>
-        <p class="intro">Everything technical lives here: how each style works, how it was evaluated, details of your
-          last restoration, research comparisons and the state of this server.</p>
+        <h1 class="h1">Technical details</h1>
+        <p class="intro">For the curious: the methods behind each style, your last restoration, research comparisons and the
+          state of this server. The evaluation, with its uncertainty, is on the <a class="link" href="/evidence">Evidence</a> page.</p>
       </div>
 
       <section class="card" id="how" aria-labelledby="howTitle">
@@ -59,7 +65,7 @@
           </div>
         </div>
         <h3>What happens to your photo</h3>
-        <ol class="flow" aria-label="Processing steps">
+        <ol class="steps-inline" aria-label="Processing steps">
           <li>Upload</li><li class="arrow" aria-hidden="true">→</li>
           <li>Checked: format, size, integrity</li><li class="arrow" aria-hidden="true">→</li>
           <li>Resized to at most <span id="maxSide">1024</span> px</li><li class="arrow" aria-hidden="true">→</li>
@@ -79,16 +85,7 @@
         <p class="sub" id="evalSub">Loading…</p>
         <div class="table-wrap" tabindex="0" role="region" aria-label="Results on the LOL-v1 eval15 test set"><table id="evalTable"><caption class="sr-only">Results on the LOL-v1 eval15 test set</caption></table></div>
         <p class="note" id="evalNote"></p>
-        <h3>What each part contributes (ablation)</h3>
-        <div class="table-wrap" tabindex="0" role="region" aria-label="Ablation results"><table id="ablationTable"><caption class="sr-only">Ablation results</caption></table></div>
-        <h3>Key findings</h3>
-        <ul id="findings"></ul>
-        <div id="trust" hidden>
-          <h3>How far can these numbers be trusted?</h3>
-          <p class="note" id="trustIntro"></p>
-          <div class="table-wrap" tabindex="0" role="region" aria-label="Differences between methods, with 95 % intervals"><table id="trustTable"><caption class="sr-only">Differences between methods, with 95 % intervals</caption></table></div>
-          <p class="note" id="trustCaveat"></p>
-        </div>
+        <p><a class="link" href="/evidence">See the full evidence: intervals, ablation, and where LUMEN is weakest</a></p>
       </section>
 
       <section class="card" id="lab" aria-labelledby="labTitle">
@@ -128,7 +125,12 @@
     </div>
   </main>
 
-  <footer class="footer"><a href="/">← Back to restoring photos</a></footer>
+  <footer class="footer">
+    <div class="wrap">
+      <span>Photos are processed and not saved.</span>
+      <nav aria-label="More"><a href="/">Restore a photo</a><a href="/how">How it works</a><a href="/evidence">Evidence</a><a href="/details">Technical details</a></nav>
+    </div>
+  </footer>
   <script src="/static/js/details.js" type="module"></script>
 </body>
 </html>

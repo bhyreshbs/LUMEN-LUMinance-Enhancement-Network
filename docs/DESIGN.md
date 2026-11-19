@@ -47,13 +47,13 @@ hybrid or the Quality-Guided Hybrid (`lumen/hybrid/`). The web app is a static H
 (`app/web/`) served by a thin FastAPI layer (`app/server.py`) over `app/service.py`, which owns mode
 availability, checkpoint verification and Compare All.
 
-**UI design.** The workspace is reduced to the task: upload → style → restore → compare → download. It uses
-plain-language style names (**Natural** = Standard, **Highlight-safe** = Quality Guided, **Quick** =
-Classical) and contains no model names, metrics or diagnostics. Those appear only on the separate
-*How it works* page (`/details`), together with the evaluation tables, the research lab (Compare All, fusion
-hybrid with ablations, Zero-DCE++) and system status. The layout is responsive (desktop, tablet, phone with a
-sticky action bar), follows light/dark system themes, and is keyboard-operable: the comparison slider is an
-ARIA slider driven by the arrow keys.
+**UI design.** See `docs/UI_DESIGN.md` (concept, tokens, components, accessibility and performance budgets). In short:
+photos always sit on a dark "darkroom" surface, one lamplight accent, a self-hosted display serif. The landing lets visitors
+light a dark example to reveal the restoration; the workspace (upload → style → restore → look closely → download) offers
+Before/after, Lens, Develop (the real per-pixel change applied gradually) and All styles, a pipeline strip driven by the real
+stage events, and plain-language chips. Style names stay plain (**Natural** = Standard, **Highlight-safe** = Quality Guided,
+**Quick** = Classical) and the workspace shows no model names. `/how`, `/evidence` (charts generated from the results) and
+`/details` (technical) carry the rest. Responsive from phone to wide desktop, light and dark, keyboard-operable throughout.
 
 ## 4. Methods
 

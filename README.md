@@ -59,9 +59,10 @@ its SHA-256 at startup. Without it, only Classical mode is offered.
 
 ## Using the app
 
-The workspace at `/` is deliberately simple: **upload → choose a style → Restore → compare → Download**.
-Drag-and-drop, paste and the file picker all work, as do the example photos. The before/after slider can be
-dragged, or moved with the arrow keys. The restored image downloads as a PNG.
+The first view is a dark example photo you can light with your pointer or finger: inside the light is the same photo,
+restored by LUMEN (WebGL2, with a CSS fallback). Choosing a photo turns the page into the workspace:
+**upload → choose a style → Restore → look closely → Download**. Drag-and-drop, paste and the file picker all work, as do
+the example photos. Design rationale and tokens: [`docs/UI_DESIGN.md`](docs/UI_DESIGN.md).
 
 | Style in the app | Mode | Notes |
 |---|---|---|
@@ -75,6 +76,12 @@ from values the pipeline reported for that photo. This uses `POST /api/restore/s
 falls back to `POST /api/restore` if streaming is unavailable, and both return the identical image.
 
 Once a photo is restored you can inspect it:
+- **Before / after**, **Lens** (a loupe that shows the original inside the restored photo) and **Develop**, which applies the
+  change LUMEN made to each pixel gradually, from none to all of it, with a live brightness histogram.
+- **This photo**: chips for the lighting, grain, blown-out share and time, all reported by the pipeline. For very grainy
+  photos (input noise σ ≥ 0.041, the range the evaluation measured) the style picker suggests Highlight-safe.
+- **Look closer**: the light map that comes with every result (under 60 KB, drawn only when the drawer opens) and the
+  change masks.
 - **Zoom and pan** the before/after slider with the mouse wheel, a two-finger pinch, the `+` / `−` / fit buttons, or the keyboard
   (`+`, `-`, `0`; Alt + arrows to pan). Double-click resets. Dragging the divider still moves the comparison.
 - **What changed** overlays, in the colour listed in a legend, the areas where LUMEN protected highlight colour, softened
@@ -82,13 +89,12 @@ Once a photo is restored you can inspect it:
 - **Compare all styles** shows Natural, Highlight-safe and Quick side by side, with one shared zoom.
 - **Save side by side** downloads one PNG with the original on the left and the restored photo on the right.
 
-The workspace shows no model names, metrics or diagnostics. All of that is on **How it works** (`/details`):
-- how each style works
-- the technical details of your last restoration (model, checkpoint, device, timings, QGH refinements and
-  coverage)
-- the evaluation tables
-- a research lab: compare all styles, the fusion hybrid with ablations, and Zero-DCE++ if its weights are present
-- system status and limitations
+The workspace shows no model names. The other pages:
+- **How it works** (`/how`): the steps, the three styles, what is and is not stored, limits
+- **Evidence** (`/evidence`): charts generated from the results files (forest plot of the intervals, the high-noise
+  limitation, ablation), plus limits, ethics and reproduce commands
+- **Technical details** (`/details`): your last restoration (model, checkpoint, device, timings, refinements), the research
+  lab (compare all styles, the fusion hybrid with ablations, Zero-DCE++ if its weights are present), system status
 
 The frontend is plain HTML, CSS and JavaScript in `app/web/`, with no build step and no external requests. It is
 served by a small FastAPI layer (`app/server.py`) over the unchanged `app/service.py`.

@@ -138,14 +138,14 @@ def test_summary_numbers_are_consistent_with_the_per_image_files():
 
 
 @pytest.mark.skipif(not SUMMARY.is_file(), reason="run scripts/hardening_study.py first")
-def test_details_page_trust_table_is_generated_from_the_study_and_the_page_can_show_it():
+def test_evidence_page_trust_table_is_generated_from_the_study_and_the_page_can_show_it():
     s = json.loads(SUMMARY.read_text(encoding="utf-8"))
     ev = json.loads((ROOT / "app/web/static/data/evaluation.json").read_text(encoding="utf-8"))
     assert ev["robustness"] == H.robustness_block(s), "evaluation.json is stale: run scripts/hardening_study.py report"
     assert ev["robustness"]["rows"] and {r["reading"] for r in ev["robustness"]["rows"]} <= {"better", "worse", "not distinguishable"}
     assert [m["name"] for m in ev["methods"]][:1] == ["Quick (classical, tuned)"]              # the frozen table is untouched
-    html = (ROOT / "app/web/details.html").read_text(encoding="utf-8")
-    js = (ROOT / "app/web/static/js/details.js").read_text(encoding="utf-8")
+    html = (ROOT / "app/web/evidence.html").read_text(encoding="utf-8")       # moved from the details page in the redesign
+    js = (ROOT / "app/web/static/js/evidence.js").read_text(encoding="utf-8")
     for element in ("trust", "trustIntro", "trustTable", "trustCaveat"):
         assert f'id="{element}"' in html and f'$("{element}")' in js
 

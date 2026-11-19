@@ -4,7 +4,9 @@ The restoration itself is unchanged and lives in app/service.py (EnhancementServ
 translates HTTP to service calls:
 
   GET  /                    restoration workspace (app/web/index.html)
-  GET  /details             "Under the hood": technical details, evaluation, research lab, system status
+  GET  /details             technical details: your last photo, research lab, system status
+  GET  /how                 how LUMEN works (pipeline, styles, privacy, limits)
+  GET  /evidence            the evaluation, as charts generated from the results files
   GET  /api/status          user-facing styles + technical status
   GET  /api/examples        example photos
   POST /api/restore         multipart (file, style)            -> original + restored image (+ details)
@@ -25,6 +27,7 @@ import asyncio
 import base64
 import json
 import logging
+import mimetypes
 import os
 import tempfile
 import time
@@ -34,8 +37,10 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from lumen.imageio import DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_PIXELS, SUPPORTED_TEXT, ImageValidationError
 from service import (
@@ -43,6 +48,7 @@ from service import (
 )
 
 log = logging.getLogger("lumen.app")
+mimetypes.add_type("font/woff2", ".woff2")   # not in every platform's MIME table; fonts must not be sent as octet-stream
 APP_DIR = Path(__file__).resolve().parent
 WEB_DIR = APP_DIR / "web"
 EXAMPLES_DIR = APP_DIR / "examples"
@@ -66,6 +72,10 @@ OVERLAYS = {
     "colour": ("Colour nudged back", "#f6b73c"),
     "contrast": ("Detail sharpened", "#b794f6"),
 }
+# "Look closer": the light map that comes with every result, small enough to always send.
+LIGHT_MAP_MAX_SIDE = 384
+LIGHT_MAP_MAX_BYTES = 60 * 1024    # the whole data URL as sent
+LIGHT_MAP_LABELS = {"added": "Where light was added", "scene": "Light already in the photo"}
 OVERLAY_MAX_SIDE = 512     # the masks are feathered, so a smaller picture scaled up by the browser loses nothing
 OVERLAY_OPACITY = 0.55     # strong enough to see where, light enough that the photo stays readable underneath
 EXAMPLE_TITLES = {
@@ -112,6 +122,32 @@ def _overlays(r: EnhanceResult) -> list[dict]:
             for key, (label, tint) in OVERLAYS.items() if key in r.masks]
 
 
+def _light_map_url(m: np.ndarray) -> str:
+    """Grayscale JPEG, at most LIGHT_MAP_MAX_SIDE px and LIGHT_MAP_MAX_BYTES as a data URL (quality steps down if needed)."""
+    h, w = m.shape
+    scale = min(1.0, LIGHT_MAP_MAX_SIDE / max(h, w))
+    if scale < 1.0:
+        m = cv2.resize(m.astype(np.float32), (max(1, round(w * scale)), max(1, round(h * scale))), interpolation=cv2.INTER_AREA)
+    lo, hi = np.percentile(m, [2, 98])                     # stretched for display: relative to the rest of the photo
+    m = (m - lo) / (hi - lo) if hi - lo > 1e-6 else np.zeros_like(m)
+    gray = np.clip(m * 255.0 + 0.5, 0, 255).astype(np.uint8)
+    url = ""
+    for quality in (90, 80, 70, 60, 50, 40):
+        ok, buf = cv2.imencode(".jpg", gray, [cv2.IMWRITE_JPEG_QUALITY, quality])
+        if not ok:
+            raise ApiError(500, "The light map could not be encoded.", "encode_failed")
+        url = "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode("ascii")
+        if len(url) <= LIGHT_MAP_MAX_BYTES:
+            break
+    return url
+
+
+def _maps(r: EnhanceResult) -> dict:
+    if r.light_map is None:
+        return {}
+    return {"light": {"kind": r.light_map_kind, "label": LIGHT_MAP_LABELS[r.light_map_kind], "image": _light_map_url(r.light_map)}}
+
+
 def _details(r: EnhanceResult) -> dict:
     """Technical information for the Details page (never shown in the workspace)."""
     h, w = r.original.shape[:2]
@@ -129,7 +165,7 @@ def _payload(r: EnhanceResult, style_key: str | None = None) -> dict:
     style = STYLES.get(style_key or r.mode, {"name": r.label})
     return {"style": style_key or r.mode, "name": style["name"], "width": w, "height": h,
             "elapsed_ms": round(r.latency_ms, 1), "original": _data_url(r.original, "jpg"),
-            "restored": _data_url(r.enhanced, "png"), "overlays": _overlays(r), "details": _details(r)}
+            "restored": _data_url(r.enhanced, "png"), "overlays": _overlays(r), "maps": _maps(r), "details": _details(r)}
 
 
 def _json_default(o):
@@ -169,6 +205,10 @@ async def _save_upload(upload: UploadFile | None) -> Path:
 # ---------------------------------------------------------------------------------------------- app
 def create_app(service: EnhancementService) -> FastAPI:
     app = FastAPI(title="LUMEN", docs_url=None, redoc_url=None, openapi_url=None)
+    # text (pages, CSS, JS, JSON results) is compressed; the live event stream must not be buffered, and images and fonts
+    # are compressed already
+    app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=6,
+                       exclude_content_types=("text/event-stream", "image/jpeg", "image/png", "image/webp", "font/woff2"))
     state = {"waiting": 0}
     gate = asyncio.Semaphore(1)
 
@@ -196,6 +236,14 @@ def create_app(service: EnhancementService) -> FastAPI:
     @app.exception_handler(ApiError)
     async def _api_error(_: Request, e: ApiError):
         return JSONResponse({"error": e.message, "code": e.code}, status_code=e.status)
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http_error(request: Request, e: StarletteHTTPException):
+        path = request.url.path
+        if e.status_code == 404 and request.method == "GET" and not path.startswith(("/api/", "/static/", "/examples/")):
+            return FileResponse(WEB_DIR / "404.html", status_code=404, headers={"Cache-Control": "no-cache"})
+        code = "not_found" if e.status_code == 404 else "http_error"
+        return JSONResponse({"error": str(e.detail), "detail": e.detail, "code": code}, status_code=e.status_code)
 
     @app.exception_handler(Exception)
     async def _unexpected(_: Request, e: Exception):  # pragma: no cover - logged, generic message
@@ -231,6 +279,14 @@ def create_app(service: EnhancementService) -> FastAPI:
     @app.get("/details", include_in_schema=False)
     async def details():
         return FileResponse(WEB_DIR / "details.html", headers={"Cache-Control": "no-cache"})
+
+    @app.get("/how", include_in_schema=False)
+    async def how():
+        return FileResponse(WEB_DIR / "how.html", headers={"Cache-Control": "no-cache"})
+
+    @app.get("/evidence", include_in_schema=False)
+    async def evidence():
+        return FileResponse(WEB_DIR / "evidence.html", headers={"Cache-Control": "no-cache"})
 
     app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
 

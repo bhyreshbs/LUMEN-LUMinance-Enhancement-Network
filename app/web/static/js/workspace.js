@@ -1,5 +1,9 @@
-// LUMEN workspace: upload -> choose style -> restore -> compare -> download.
+// LUMEN workspace: choose a photo -> pick a style -> restore -> look closely -> download.
 // State machine on <main data-state>: empty | ready | working | done | error.
+// Every caption, chip and sentence shown here is built from values the server reported for this photo.
+import { createDevelop, histogramPaths } from "./develop.js";
+import { initLanding } from "./landing.js";
+import { initShell, toast } from "./shell.js";
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -8,27 +12,33 @@ const els = {
   examplesBlock: $("examplesBlock"), examples: $("examples"), notice: $("serviceNotice"),
   stage: $("stage"), noPreview: $("noPreview"),
   viewer: $("viewer"), imgAfter: $("imgAfter"), imgBefore: $("imgBefore"), handle: $("handle"),
-  overlay: $("overlay"), elapsed: $("elapsed"),
+  overlay: $("overlay"), elapsed: $("elapsed"), overlayTitle: $("overlayTitle"),
   fileThumb: $("fileThumb"), fileName: $("fileName"), fileMeta: $("fileMeta"), changeBtn: $("changeBtn"),
   styles: $("styles"), restoreBtn: $("restoreBtn"), restoreLabel: $("restoreLabel"), cancelBtn: $("cancelBtn"),
   result: $("result"), successText: $("successText"), downloadBtn: $("downloadBtn"), resultMeta: $("resultMeta"),
   alert: $("alert"), alertTitle: $("alertTitle"), alertText: $("alertText"), alertActions: $("alertActions"),
-  compareHint: $("compareHint"), live: $("live"),
-  overlayTitle: $("overlayTitle"), queueNote: $("queueNote"), steps: $("steps"),
-  report: $("report"), reportText: $("reportText"), stepsLog: $("stepsLog"),
-  ovLayer: $("ovLayer"), trio: $("trio"), vtools: $("vtools"), vtoolsSep: $("vtoolsSep"),
+  compareHint: $("compareHint"), live: $("live"), queueNote: $("queueNote"), steps: $("steps"),
+  report: $("report"), reportText: $("reportText"), chips: $("chips"),
+  ovLayer: $("ovLayer"), trio: $("trio"), vtools: $("vtools"), vtoolsSep: $("vtoolsSep"), modes: $("modes"),
   zoomOut: $("zoomOut"), zoomIn: $("zoomIn"), zoomFit: $("zoomFit"), zoomLabel: $("zoomLabel"), changesBtn: $("changesBtn"),
-  tools: $("tools"), compareBtn: $("compareBtn"), sideBtn: $("sideBtn"), legend: $("legend"), legendList: $("legendList"),
+  tools: $("tools"), compareBtn: $("compareBtn"), sideBtn: $("sideBtn"), closerBtn: $("closerBtn"),
+  legend: $("legend"), legendList: $("legendList"),
+  devView: $("devView"), devCanvas: $("devCanvas"), developBar: $("developBar"), developRange: $("developRange"), developOut: $("developOut"),
+  hIn: $("hIn"), hNow: $("hNow"), hOut: $("hOut"),
+  noiseHint: $("noiseHint"), noiseHintBtn: $("noiseHintBtn"),
+  mapsDialog: $("mapsDialog"), mapsBody: $("mapsBody"), mapsClose: $("mapsClose"),
 };
 
 const ACCEPT = new Set(["image/jpeg", "image/png", "image/webp", "image/bmp", "image/tiff"]);
 const ACCEPT_EXT = /\.(jpe?g|png|webp|bmp|tiff?)$/i;
+// Very grainy: the lower edge of the noisy group in the evaluation (section 10.4). Below it there is no evidence either way.
+const GRAINY = 0.041;
+const SOME_GRAIN = 0.015;
 const state = {
   status: null, file: null, fileUrl: null, style: "standard", results: new Map(), shown: null,
   controller: null, timer: null, limitBytes: 20 * 1024 * 1024, downloadUrl: null,
-  view: "slider",          // "slider" (before / after) or "trio" (the three styles side by side)
-  trio: null,              // results of the last "compare all styles" for this photo
-  showChanges: false,      // overlay of what LUMEN changed
+  view: "compare",          // compare | lens | develop | trio
+  trio: null, showChanges: false, grainy: false, develop: null, developFor: null,
 };
 
 // ------------------------------------------------------------------ helpers
@@ -44,6 +54,9 @@ function dataUrlToBlob(url) {
   return new Blob([bytes], { type: mime });
 }
 const baseName = (name) => (name || "photo").replace(/\.[^.]+$/, "").replace(/[^\w\-]+/g, "_").slice(0, 60) || "photo";
+const seconds = (ms) => (ms < 100 ? "under 0.1 s" : `${(ms / 1000).toFixed(1)} s`);
+const share = (fraction) => (fraction * 100 < 0.1 ? "under 0.1%" : `${(fraction * 100).toFixed(1)}%`);
+const styleName = (id) => (state.status?.styles.find((s) => s.id === id) || {}).name || id;
 
 function setState(s) {
   els.main.dataset.state = s;
@@ -56,8 +69,9 @@ function setState(s) {
   els.restoreBtn.disabled = working;
   els.changeBtn.disabled = working;
   els.styles.disabled = working;
-  els.compareBtn.disabled = working;
   els.sideBtn.disabled = working;
+  els.closerBtn.disabled = working;
+  for (const b of els.modes.querySelectorAll("button")) b.disabled = working;
 }
 
 function showAlert(title, text, actions = []) {
@@ -66,41 +80,38 @@ function showAlert(title, text, actions = []) {
   els.alertActions.replaceChildren(...actions.map(([label, fn, primary]) => {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = primary ? "btn btn--primary" : "btn";
+    b.className = primary ? "btn btn--light" : "btn";
     b.textContent = label;
     b.addEventListener("click", fn);
     return b;
   }));
   els.alert.hidden = false;
   announce(`${title}. ${text}`);
-  // on phones the alert sits below the style list: bring it on screen so the problem is never missed
-  if (matchMedia("(max-width: 860px)").matches) {
+  if (matchMedia("(max-width: 900px)").matches) {
     const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
     requestAnimationFrame(() => els.alert.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "auto" }));
   }
 }
 const hideAlert = () => { els.alert.hidden = true; };
 
-// ------------------------------------------------------------------ styles (enhancement options)
+// ------------------------------------------------------------------ styles
 function renderStyles() {
   const legend = els.styles.querySelector("legend");
   els.styles.replaceChildren(legend);
   for (const s of state.status.styles) {
     const label = document.createElement("label");
     label.className = "style";
-    label.innerHTML = `<input type="radio" name="style">
-      <span class="style__box"><span class="style__dot" aria-hidden="true"></span>
-      <span class="style__name"></span><p class="style__desc"></p></span>`;
+    label.innerHTML = `<input type="radio" name="style"><span class="style__dot" aria-hidden="true"></span>
+      <span class="style__name"></span><span class="style__desc"></span>`;
     const input = label.querySelector("input");
     input.value = s.id;
     input.disabled = !s.available;
     input.checked = s.id === state.style;
     label.querySelector(".style__name").textContent = s.name;
     if (s.recommended) {
-      const pill = document.createElement("span");
-      pill.className = "pill";
-      pill.textContent = "Recommended";
-      label.querySelector(".style__name").append(pill);
+      const tag = document.createElement("small");
+      tag.textContent = "recommended";
+      label.querySelector(".style__name").append(tag);
     }
     label.querySelector(".style__desc").textContent = s.available ? s.summary : "Not available right now.";
     input.addEventListener("change", () => { state.style = s.id; onStyleChange(); });
@@ -113,32 +124,43 @@ function firstAvailableStyle() {
   return (ok.find((s) => s.id === state.style) || ok.find((s) => s.recommended) || ok[0] || {}).id;
 }
 
+function setStyle(id) {
+  state.style = id;
+  for (const i of els.styles.querySelectorAll("input")) i.checked = i.value === id;
+  onStyleChange();
+}
+
 function onStyleChange() {
   hideAlert();
-  if (state.view === "trio") hideTrio();
+  updateHint();
+  if (state.view === "trio") setView("compare");
   const cached = state.results.get(state.style);
   if (cached) { showResult(cached); return; }
   if (state.shown) {           // a result for another style is on screen: offer to restore with this style
     els.result.hidden = true;
-    els.report.hidden = true;
     els.restoreBtn.hidden = false;
-    const name = state.status.styles.find((s) => s.id === state.style).name;
-    els.restoreLabel.textContent = `Restore with ${name}`;
+    els.restoreLabel.textContent = `Restore with ${styleName(state.style)}`;
   }
 }
 
+// The noisy-photo hint appears only for inputs inside the evidence range (very grainy), and only where it would change something.
+function updateHint() {
+  const hs = state.status?.styles.find((s) => s.id === "quality_guided");
+  els.noiseHint.hidden = !(state.grainy && hs && hs.available && state.style !== "quality_guided");
+}
+
 // ------------------------------------------------------------------ fitting the photo to the stage
-const narrow = window.matchMedia("(max-width: 860px)");
+const narrow = window.matchMedia("(max-width: 900px)");
 function fitViewer() {
   const img = els.imgAfter;
-  if (!img.naturalWidth || els.viewer.hidden) return;
-  const pad = narrow.matches ? 0 : 32;
-  const reserve = !narrow.matches && els.stage.classList.contains("has-tools") ? 64 : 0;   // room for the tool bar
-  const availW = els.stage.clientWidth - 2 * pad - (narrow.matches ? 24 : 0);
-  const availH = narrow.matches ? window.innerHeight * 0.58 : els.stage.clientHeight - 2 * pad - reserve;
+  if (!img.naturalWidth) return;
+  const pad = narrow.matches ? 0 : 24;
+  const availW = els.stage.clientWidth - 2 * pad;
+  const availH = narrow.matches ? window.innerHeight * 0.56 : els.stage.clientHeight - 2 * pad;
   const scale = Math.max(0.01, Math.min(availW / img.naturalWidth, availH / img.naturalHeight, 3));
-  els.viewer.style.width = `${Math.floor(img.naturalWidth * scale)}px`;
-  els.viewer.style.height = `${Math.floor(img.naturalHeight * scale)}px`;
+  const w = `${Math.floor(img.naturalWidth * scale)}px`, h = `${Math.floor(img.naturalHeight * scale)}px`;
+  for (const el of [els.viewer, els.devView]) { el.style.width = w; el.style.height = h; }
+  els.viewer.style.setProperty("--lr", `${Math.round(Math.min(110, Math.max(64, img.naturalWidth * scale * 0.14)))}px`);
 }
 
 function onStageResize() {
@@ -147,12 +169,12 @@ function onStageResize() {
 }
 
 function showPreview(ok) {
-  els.viewer.hidden = !ok;
+  if (state.view === "compare" || state.view === "lens" || !state.shown) els.viewer.hidden = !ok;
   els.noPreview.hidden = ok;
   if (ok) fitViewer();
 }
 
-// ------------------------------------------------------------------ comparison slider
+// ------------------------------------------------------------------ comparison slider and lens
 function setPos(pct) {
   const p = Math.min(100, Math.max(0, pct));
   els.viewer.style.setProperty("--pos", `${p}%`);
@@ -160,16 +182,23 @@ function setPos(pct) {
   els.handle.setAttribute("aria-valuetext", `${Math.round(p)}% original`);
 }
 
+const lens = { x: 0.6, y: 0.45 };
+function setLens(x, y) {
+  lens.x = Math.min(1, Math.max(0, x));
+  lens.y = Math.min(1, Math.max(0, y));
+  els.viewer.style.setProperty("--lx", `${(lens.x * 100).toFixed(2)}%`);
+  els.viewer.style.setProperty("--ly", `${(lens.y * 100).toFixed(2)}%`);
+}
+
 // ------------------------------------------------------------------ zoom and pan
-// One transform (scale + offset in pixels, origin top-left) shared by every picture in the stage: the before/after
-// slider, its overlay of changes, and the three-up view. It is kept as CSS variables on the stage, so the pictures
-// stay in step. screen = scale * picture + offset.
+// One transform (scale + offset in pixels, origin top-left) shared by every picture in the stage, kept as CSS variables on
+// the stage so the slider, its overlays, Develop and the three-up view stay in step. screen = scale * picture + offset.
 const ZOOM_MAX = 8;
 const zoom = { s: 1, x: 0, y: 0 };
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const isZoomed = () => zoom.s > 1.001;
 const zoomable = () => els.stage.dataset.zoomable === "1";
-const activeHost = () => (state.view === "trio" ? els.trio.querySelector(".tile") : els.viewer);
+const activeHost = () => (state.view === "trio" ? els.trio.querySelector(".tile") : state.view === "develop" ? els.devView : els.viewer);
 
 function applyZoom() {
   els.stage.style.setProperty("--zs", String(zoom.s));
@@ -188,11 +217,10 @@ function resetZoom() {
 }
 
 function clampPan(w, h) {
-  zoom.x = clamp(zoom.x, w * (1 - zoom.s), 0);   // the picture always covers the frame
+  zoom.x = clamp(zoom.x, w * (1 - zoom.s), 0);
   zoom.y = clamp(zoom.y, h * (1 - zoom.s), 0);
 }
 
-// zoom by `factor` keeping the picture point under (cx, cy) — pixels inside the frame of size w x h — where it is
 function zoomAt(factor, cx, cy, w, h) {
   const s = clamp(zoom.s * factor, 1, ZOOM_MAX);
   const k = s / zoom.s;
@@ -218,23 +246,25 @@ function zoomFromCentre(factor) {
   zoomAt(factor, r.width / 2, r.height / 2, r.width, r.height);
 }
 
-// the tool bar (and the zoom itself) exist only while there is a result to inspect
 function setZoomable(on) {
   els.stage.dataset.zoomable = on ? "1" : "0";
-  els.stage.classList.toggle("has-tools", on);
   els.vtools.hidden = !on;
   if (!on) resetZoom();
   fitViewer();
 }
 
 function initViewerInput() {
-  const pointers = new Map();            // pointer id -> last position (mouse, pen or fingers)
-  let mode = null;                        // "slide" | "pan" | "pinch"
+  const pointers = new Map();
+  let mode = null;
   let pinch = null;
   const hostOf = (e) => e.target.closest(".zoomhost");
   const slideTo = (e) => {
     const r = els.viewer.getBoundingClientRect();
     setPos(((e.clientX - r.left) / r.width) * 100);
+  };
+  const lensTo = (e) => {
+    const r = els.viewer.getBoundingClientRect();
+    setLens((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
   };
   const stopDragging = () => {
     els.viewer.classList.remove("is-dragging");
@@ -246,7 +276,7 @@ function initViewerInput() {
     if (!host || !zoomable() || e.button > 0) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     host.setPointerCapture(e.pointerId);
-    if (pointers.size === 2) {           // two fingers: pinch to zoom
+    if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       mode = "pinch";
       pinch = { host, d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
@@ -255,12 +285,15 @@ function initViewerInput() {
     }
     if (pointers.size > 2) return;
     const onHandle = Boolean(e.target.closest(".viewer__handle"));
-    if (host === els.viewer && els.viewer.classList.contains("is-compare") && (!isZoomed() || onHandle)) {
-      mode = "slide";                    // not zoomed, or grabbing the divider: move the comparison
+    if (host === els.viewer && state.view === "lens" && !isZoomed()) {
+      mode = "lens";
+      lensTo(e);
+    } else if (host === els.viewer && state.view === "compare" && els.viewer.classList.contains("is-compare") && (!isZoomed() || onHandle)) {
+      mode = "slide";
       els.viewer.classList.add("is-dragging");
       slideTo(e);
     } else if (isZoomed()) {
-      mode = "pan";                      // zoomed in: dragging moves the picture
+      mode = "pan";
       els.stage.classList.add("is-panning");
     } else {
       mode = null;
@@ -268,6 +301,7 @@ function initViewerInput() {
   });
 
   els.stage.addEventListener("pointermove", (e) => {
+    if (state.view === "lens" && !pointers.size && e.target.closest("#viewer")) { lensTo(e); return; }   // hover moves the lens
     const p = pointers.get(e.pointerId);
     if (!p) return;
     const dx = e.clientX - p.x;
@@ -276,6 +310,8 @@ function initViewerInput() {
     p.y = e.clientY;
     if (mode === "slide") {
       slideTo(e);
+    } else if (mode === "lens") {
+      lensTo(e);
     } else if (mode === "pan") {
       const r = hostOf(e).getBoundingClientRect();
       zoom.x += dx;
@@ -296,7 +332,7 @@ function initViewerInput() {
 
   const end = (e) => {
     pointers.delete(e.pointerId);
-    if (pointers.size < 2 && mode === "pinch") mode = null;   // a finger left: do not start sliding by accident
+    if (pointers.size < 2 && mode === "pinch") mode = null;
     if (pointers.size === 0) { mode = null; stopDragging(); }
   };
   els.stage.addEventListener("pointerup", end);
@@ -313,8 +349,7 @@ function initViewerInput() {
 
   els.stage.addEventListener("dblclick", (e) => { if (hostOf(e) && zoomable()) resetZoom(); });
 
-  // Keyboard. The slider handle keeps its arrow keys; zoom keys work on the handle and on the three-up pictures,
-  // and a zoomed picture is moved with Alt + arrows (slider) or the arrows alone (three-up).
+  // Keyboard: the slider handle keeps its arrow keys; the lens moves with the arrows on the photo; zoom keys everywhere.
   els.handle.addEventListener("keydown", (e) => {
     if (e.altKey) return;
     const now = Number(els.handle.getAttribute("aria-valuenow"));
@@ -325,13 +360,21 @@ function initViewerInput() {
   });
   els.stage.addEventListener("keydown", (e) => {
     const onHandle = Boolean(e.target.closest(".viewer__handle"));
+    const onLens = state.view === "lens" && e.target === els.viewer;
+    const onDev = e.target === els.devView;
     const tile = e.target.closest(".tile");
-    if (!zoomable() || !(onHandle || tile) || e.ctrlKey || e.metaKey) return;
-    const r = (onHandle ? els.viewer : tile).getBoundingClientRect();
+    if (!zoomable() || !(onHandle || onLens || onDev || tile) || e.ctrlKey || e.metaKey) return;
+    const host = onHandle || onLens ? els.viewer : onDev ? els.devView : tile;
+    const r = host.getBoundingClientRect();
     if (e.key === "+" || e.key === "=") { e.preventDefault(); zoomAt(1.5, r.width / 2, r.height / 2, r.width, r.height); }
     else if (e.key === "-" || e.key === "_") { e.preventDefault(); zoomAt(1 / 1.5, r.width / 2, r.height / 2, r.width, r.height); }
     else if (e.key === "0") { e.preventDefault(); resetZoom(); }
-    else if (isZoomed() && (tile || e.altKey) && e.key.startsWith("Arrow")) {
+    else if (onLens && !e.altKey && e.key.startsWith("Arrow")) {
+      e.preventDefault();
+      const step = e.shiftKey ? 0.1 : 0.03;
+      setLens(lens.x + (e.key === "ArrowRight" ? step : e.key === "ArrowLeft" ? -step : 0),
+              lens.y + (e.key === "ArrowDown" ? step : e.key === "ArrowUp" ? -step : 0));
+    } else if (isZoomed() && (tile || onDev || e.altKey) && e.key.startsWith("Arrow")) {
       e.preventDefault();
       const step = 60;
       if (e.key === "ArrowRight") zoom.x -= step;
@@ -348,6 +391,61 @@ function initViewerInput() {
   els.zoomFit.addEventListener("click", resetZoom);
 }
 
+// ------------------------------------------------------------------ view modes
+function setView(view) {
+  if (view === "trio") { compareStyles(); return; }
+  const leavingTrio = state.view === "trio";
+  state.view = view;
+  if (leavingTrio) { els.trio.hidden = true; els.trio.replaceChildren(); resetZoom(); }
+  for (const b of els.modes.querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.mode === view));
+  const photo = view === "compare" || view === "lens";
+  els.viewer.hidden = !photo;
+  els.devView.hidden = view !== "develop";
+  els.developBar.hidden = view !== "develop";
+  els.viewer.classList.toggle("is-lens", view === "lens");
+  els.handle.hidden = view === "lens";
+  if (view === "lens") {
+    els.viewer.tabIndex = 0;
+    els.viewer.setAttribute("role", "img");
+    els.viewer.setAttribute("aria-label", "Lens: the original photo shows inside the circle. Move it with the arrow keys.");
+  } else {
+    els.viewer.removeAttribute("tabindex");
+    els.viewer.removeAttribute("role");
+    els.viewer.removeAttribute("aria-label");
+  }
+  els.devView.tabIndex = view === "develop" ? 0 : -1;
+  els.compareHint.hidden = !state.shown || view !== "compare";
+  renderOverlays(state.shown);
+  if (view === "develop") showDevelop();
+  fitViewer();
+}
+
+// ------------------------------------------------------------------ Develop
+async function showDevelop() {
+  const data = state.shown;
+  if (!data) return;
+  if (!state.develop) state.develop = createDevelop(els.devCanvas);
+  if (state.developFor !== data) {
+    state.developFor = data;
+    await state.develop.setImages(data.original, data.restored);
+  }
+  drawDevelop();
+}
+
+function drawDevelop() {
+  if (!state.develop) return;
+  const t = Number(els.developRange.value) / 100;
+  const h = state.develop.render(t);
+  els.developOut.textContent = `${Math.round(t * 100)}%`;
+  els.developRange.setAttribute("aria-valuetext", `${Math.round(t * 100)} percent of the light LUMEN added`);
+  if (h) {
+    const p = histogramPaths(h);
+    els.hIn.setAttribute("d", p.input);
+    els.hNow.setAttribute("d", p.now);
+    els.hOut.setAttribute("d", p.restored);
+  }
+}
+
 // ------------------------------------------------------------------ choosing a photo
 function validateFile(file) {
   if (!file) return "No file was selected.";
@@ -357,7 +455,7 @@ function validateFile(file) {
     return "That file doesn't look like a photo. Please choose a JPEG, PNG, WebP, BMP or TIFF image.";
   if (file.size === 0) return "That file is empty. Please choose another photo.";
   if (file.size > state.limitBytes)
-    return `This photo is ${formatBytes(file.size)}. The limit is ${formatBytes(state.limitBytes)} — please choose a smaller file.`;
+    return `This photo is ${formatBytes(file.size)}. The limit is ${formatBytes(state.limitBytes)}; please choose a smaller file.`;
   return null;
 }
 
@@ -380,8 +478,11 @@ function selectFile(file) {
   state.fileUrl = URL.createObjectURL(file);
   state.results.clear();
   state.shown = null;
+  state.grainy = false;
+  state.developFor = null;
   state.style = firstAvailableStyle();
   renderStyles();
+  updateHint();
   els.fileName.textContent = file.name || "Pasted photo";
   els.fileMeta.textContent = formatBytes(file.size);
   els.fileThumb.classList.remove("is-missing");
@@ -391,12 +492,15 @@ function selectFile(file) {
   els.viewer.classList.remove("is-compare");
   els.result.hidden = true;
   els.report.hidden = true;
+  els.steps.hidden = true;
+  els.queueNote.hidden = true;
   els.compareHint.hidden = true;
   resetInspection();
   els.restoreBtn.hidden = false;
   els.restoreLabel.textContent = "Restore photo";
   hideAlert();
   setState("ready");
+  window.scrollTo({ top: 0 });
   els.restoreBtn.focus({ preventScroll: true });
   announce(`${els.fileName.textContent} selected. Choose a style and press Restore photo.`);
 }
@@ -413,65 +517,108 @@ async function selectExample(ex) {
   }
 }
 
-// ------------------------------------------------------------------ progress and report
-// The server reports each stage as it really finishes. Everything shown here comes from those reports:
-// no stage is invented, and every sentence of the summary maps to one reported value.
-const STEP_LABELS = {
-  decoded: "Reading your photo",
-  analysed: "Checking the lighting",
-  restored: "Restoring brightness and detail",
-  refined: "Protecting bright areas and colour",
-};
-const LIGHTING = { extremely_dark: "very dark", non_uniform: "unevenly lit", low_light: "dark", normal: "fairly bright" };
-const seconds = (ms) => (ms < 100 ? "under 0.1 s" : `${(ms / 1000).toFixed(1)} s`);
-const share = (fraction) => (fraction * 100 < 0.1 ? "under 0.1%" : `${(fraction * 100).toFixed(1)}%`);
+// ------------------------------------------------------------------ the pipeline strip
+// The server reports each stage as it really finishes. A running stage shows elapsed time (a fact), never a forecast.
+const LIGHTING = { extremely_dark: "Very dark", non_uniform: "Unevenly lit", low_light: "Dark", normal: "Fairly bright" };
+const grainWord = (sigma) => (sigma >= GRAINY ? "heavy grain" : sigma >= SOME_GRAIN ? "some grain" : "little grain");
+const stepName = (stage, style) => ({
+  decoded: "Read", analysed: "Measured the light", restored: "Restored",
+  refined: style === "quality_guided" ? "Final touches" : "Checked bright areas",
+}[stage]);
+
+function stepCaption(stage, d) {
+  if (!d) return "";
+  if (stage === "decoded") {
+    const resized = d.source_width && (d.source_width !== d.width || d.source_height !== d.height);
+    return `${d.width} × ${d.height} pixels${resized ? `, from ${d.source_width} × ${d.source_height}` : ", as uploaded"}`;
+  }
+  if (stage === "analysed") {
+    if (!d.category) return "Measured";
+    return `${LIGHTING[d.category] || "Dark"}: ${Math.round(d.mean_lum * 100)}% average brightness, ${grainWord(d.noise_sigma ?? 0)}`;
+  }
+  if (stage === "restored") return "Brightness, colour and detail";
+  if (stage === "refined") {
+    const did = [];
+    if (d.highlight_hue && d.highlight_hue.applied) did.push("kept the colour of bright spots");
+    const applied = d.applied || [];
+    if (applied.includes("highlight")) did.push("softened near-white areas");
+    if (applied.includes("noise")) did.push("reduced grain");
+    if (applied.includes("colour")) did.push("nudged colours back");
+    if (applied.includes("contrast")) did.push("sharpened flattened detail");
+    if (!did.length) return d.refinements === undefined ? "None needed their colour protected" : "Nothing needed fixing";
+    const s = did.join(", ");
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  return "";
+}
 
 const newRun = (style) => ({
-  order: style === "classical" ? ["decoded", "analysed", "restored"] : Object.keys(STEP_LABELS),
-  ms: new Map(), events: {}, last: 0, active: "decoded",
+  style, order: style === "classical" ? ["decoded", "analysed", "restored"] : ["decoded", "analysed", "restored", "refined"],
+  ms: new Map(), events: {}, last: 0, lastClient: performance.now(), active: "decoded",
 });
 
-function renderSteps(list, run) {
-  list.replaceChildren(...run.order.map((stage) => {
+function renderSteps(run) {
+  els.steps.style.setProperty("--n", String(run.order.length));
+  els.steps.replaceChildren(...run.order.map((stage) => {
     const li = document.createElement("li");
-    const label = document.createElement("span");
-    label.textContent = STEP_LABELS[stage];
-    li.append(label);
+    li.className = "step";
+    const name = document.createElement("span");
+    name.className = "step__name";
+    name.textContent = stepName(stage, run.style);
+    const time = document.createElement("span");
+    time.className = "step__time";
+    name.append(time);
+    const what = document.createElement("span");
+    what.className = "step__what";
     if (run.ms.has(stage)) {
-      li.className = "is-done";
-      const time = document.createElement("span");
-      time.className = "steps__time";
+      li.classList.add("is-done");
       time.textContent = seconds(run.ms.get(stage));
-      li.append(time);
+      what.textContent = stepCaption(stage, run.events[stage]);
     } else if (stage === run.active) {
-      li.className = "is-active";
+      li.classList.add("is-active");
+      li.dataset.running = "1";
+      what.textContent = "In progress";
+    } else {
+      what.textContent = "Waiting";
     }
+    li.append(name, what);
     return li;
   }));
 }
 
+function tickRunning(run) {
+  const li = els.steps.querySelector("[data-running='1'] .step__time");
+  if (li) li.textContent = seconds(performance.now() - run.lastClient);
+}
+
 function onStage(run, kind, d) {
   if (kind === "queued") {
-    els.queueNote.textContent = d.ahead === 1 ? "Waiting for 1 other photo to finish…" : `Waiting for ${d.ahead} other photos to finish…`;
+    els.queueNote.textContent = d.ahead === 1 ? "Waiting for 1 other photo to finish." : `Waiting for ${d.ahead} other photos to finish.`;
     els.queueNote.hidden = false;
     return;
   }
-  if (!(kind in STEP_LABELS)) return;          // a stage this page does not know: ignore it
+  if (!["decoded", "analysed", "restored", "refined"].includes(kind)) return;
   els.queueNote.hidden = true;
-  if (kind === "decoded" && Array.isArray(d.plan)) run.order = d.plan.filter((s) => s in STEP_LABELS);
+  if (kind === "decoded" && Array.isArray(d.plan)) run.order = d.plan.filter((s) => stepName(s, run.style));
+  if (kind === "analysed" && typeof d.noise_sigma === "number") {
+    state.grainy = d.noise_sigma >= GRAINY;
+    updateHint();
+  }
   run.events[kind] = d;
   run.ms.set(kind, Math.max(0, d.t_ms - run.last));
   run.last = d.t_ms;
+  run.lastClient = performance.now();
   run.active = run.order[run.order.indexOf(kind) + 1];
-  els.overlayTitle.textContent = run.active ? `${STEP_LABELS[run.active]}…` : "Finishing up…";
-  renderSteps(els.steps, run);
+  els.overlayTitle.textContent = run.active ? `${stepName(run.active, run.style)}…` : "Finishing up…";
+  renderSteps(run);
+  announce(`${stepName(kind, run.style)}: done.`);
 }
 
 function buildReport(run, data) {
   const ev = run.events;
   const out = [];
   if (ev.analysed && ev.analysed.category) {
-    out.push(`Your photo looked ${LIGHTING[ev.analysed.category] || "dark"} (average brightness ${Math.round(ev.analysed.mean_lum * 100)}%).`);
+    out.push(`Your photo looked ${(LIGHTING[ev.analysed.category] || "dark").toLowerCase()} (average brightness ${Math.round(ev.analysed.mean_lum * 100)}%).`);
   }
   if (ev.restored) out.push(`The ${data.name} style lifted the brightness and brought back detail in ${seconds(ev.restored.ms)}.`);
   const r = ev.refined;
@@ -490,11 +637,46 @@ function buildReport(run, data) {
   return out.join(" ");
 }
 
-function showReport(report) {
-  if (!report || !report.text) { els.report.hidden = true; return; }
-  els.reportText.textContent = report.text;
-  renderSteps(els.stepsLog, { order: report.order, ms: report.ms, active: null });
-  els.report.hidden = false;
+function chip(text, bold, kind, gauge) {
+  const li = document.createElement("li");
+  li.className = `chip${kind ? ` chip--${kind}` : ""}`;
+  if (gauge !== undefined) {
+    const g = document.createElement("span");
+    g.className = "gauge";
+    g.setAttribute("aria-hidden", "true");
+    g.style.setProperty("--g", `${Math.max(3, Math.min(100, gauge))}%`);
+    li.append(g);
+  } else {
+    const i = document.createElement("i");
+    i.setAttribute("aria-hidden", "true");
+    li.append(i);
+  }
+  if (bold) { const b = document.createElement("b"); b.textContent = bold; li.append(b, " "); }
+  li.append(text);
+  return li;
+}
+
+function showReport(data) {
+  const run = data.run;
+  const list = [];
+  const a = run && run.events.analysed;
+  if (a && a.category) list.push(chip(`${Math.round(a.mean_lum * 100)}% brightness`, LIGHTING[a.category] || "Dark", null, a.mean_lum * 100));
+  if (a && typeof a.noise_sigma === "number") {
+    const w = grainWord(a.noise_sigma);
+    list.push(chip(w.charAt(0).toUpperCase() + w.slice(1), null, a.noise_sigma >= GRAINY ? "warn" : a.noise_sigma >= SOME_GRAIN ? "warn" : "ok"));
+  }
+  const m = data.details && data.details.metrics;
+  if (m && typeof m.overexposed_percent === "number") {
+    list.push(chip("blown out after", `${m.overexposed_percent.toFixed(2)}%`, m.overexposed_percent < 0.5 ? "ok" : "warn"));
+  }
+  const ms = run && run.events.restored ? run.events.restored.ms : null;
+  if (ms !== null) list.push(chip("", `Restored in ${seconds(ms)}`, "light"));
+  els.chips.replaceChildren(...list);
+  els.chips.hidden = list.length === 0;
+  const text = data.reportText || "";
+  els.reportText.textContent = text;
+  els.reportText.hidden = !text;
+  els.report.hidden = list.length === 0 && !text;
 }
 
 // Server-Sent Events over fetch (EventSource cannot POST a file).
@@ -551,21 +733,19 @@ async function plainRestore(body, signal) {
   return data;
 }
 
-// ------------------------------------------------------------------ what changed, the three styles, saving a comparison
-// The overlays are real: the server sends one only for a refinement that was applied to this photo, with its measured
-// coverage. The picture is a transparent PNG in the refinement's colour, whose opacity is where it acted.
+// ------------------------------------------------------------------ what changed, the three styles, saving, maps
 function renderOverlays(data) {
   const list = (data && data.overlays) || [];
-  const inSlider = state.view !== "trio";
+  const onPhoto = state.view === "compare" || state.view === "lens";
   els.ovLayer.replaceChildren(...list.map((o) => {
     const img = document.createElement("img");
     img.alt = "";
     img.src = o.image;
     return img;
   }));
-  els.changesBtn.hidden = list.length === 0 || !inSlider;
+  els.changesBtn.hidden = list.length === 0 || !onPhoto;
   els.vtoolsSep.hidden = els.changesBtn.hidden;
-  const on = state.showChanges && list.length > 0 && inSlider;
+  const on = state.showChanges && list.length > 0 && onPhoto;
   els.ovLayer.hidden = !on;
   els.changesBtn.setAttribute("aria-pressed", String(on));
   els.legend.hidden = !on;
@@ -595,7 +775,10 @@ function toggleChanges() {
 
 function showTrio(results) {
   state.view = "trio";
+  for (const b of els.modes.querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.mode === "trio"));
   els.viewer.hidden = true;
+  els.devView.hidden = true;
+  els.developBar.hidden = true;
   els.noPreview.hidden = true;
   els.trio.hidden = false;
   els.trio.setAttribute("role", "group");
@@ -615,27 +798,14 @@ function showTrio(results) {
     tile.append(img, caption);
     return tile;
   }));
-  els.compareBtn.textContent = "Back to before and after";
   els.compareHint.hidden = true;
   resetZoom();
   renderOverlays(state.shown);
   announce("Showing the three styles side by side. Zooming moves all three together.");
 }
 
-function hideTrio() {
-  state.view = "slider";
-  els.trio.hidden = true;
-  els.trio.replaceChildren();
-  els.viewer.hidden = false;
-  els.compareBtn.textContent = "Compare all styles";
-  els.compareHint.hidden = !state.shown;
-  resetZoom();
-  fitViewer();
-  renderOverlays(state.shown);
-}
-
 function resetInspection() {
-  if (state.view === "trio") hideTrio();
+  if (state.view !== "compare") setView("compare");
   state.trio = null;
   state.showChanges = false;
   els.ovLayer.replaceChildren();
@@ -643,7 +813,6 @@ function resetInspection() {
   els.legend.hidden = true;
   els.changesBtn.hidden = true;
   els.vtoolsSep.hidden = true;
-  els.tools.hidden = true;
   setZoomable(false);
 }
 
@@ -654,8 +823,7 @@ const loadImage = (src) => new Promise((resolve, reject) => {
   img.src = src;
 });
 
-// One PNG with the original on the left and the restored photo on the right, drawn in the browser from the
-// pictures already on screen (nothing is sent anywhere).
+// One PNG with the original on the left and the restored photo on the right, drawn in the browser (nothing is sent anywhere).
 async function saveSideBySide() {
   const data = state.shown;
   if (!data) return;
@@ -681,6 +849,7 @@ async function saveSideBySide() {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast("Side-by-side picture saved");
     announce("Side-by-side picture saved.");
   } catch {
     showAlert("Couldn't save the comparison", "Please try again, or use Download to save the restored photo.");
@@ -689,15 +858,71 @@ async function saveSideBySide() {
   }
 }
 
+// The light map came with the result; it is decoded only now, when the drawer opens.
+function openMaps() {
+  const data = state.shown;
+  if (!data) return;
+  const body = [];
+  const light = data.maps && data.maps.light;
+  if (light) {
+    const fig = document.createElement("figure");
+    fig.className = "mapfig";
+    const img = document.createElement("img");
+    img.alt = light.label;
+    img.decoding = "async";
+    img.src = light.image;
+    const cap = document.createElement("figcaption");
+    cap.textContent = light.kind === "added"
+      ? `${light.label}. Brighter means LUMEN added more light there than elsewhere in this photo.`
+      : `${light.label}. Brighter means the photo was already brighter there than elsewhere; this style lifts the dark parts most.`;
+    fig.append(img, cap);
+    body.push(fig);
+  }
+  const overlays = data.overlays || [];
+  if (overlays.length) {
+    const h = document.createElement("h3");
+    h.className = "h4";
+    h.textContent = "What changed, and where";
+    const grid = document.createElement("div");
+    grid.className = "maps-grid";
+    for (const o of overlays) {
+      const fig = document.createElement("figure");
+      fig.className = "mask-tile";
+      const box = document.createElement("div");
+      box.className = "mask-tile__img";
+      const base = document.createElement("img");
+      base.alt = "";
+      base.src = data.restored;
+      const ov = document.createElement("img");
+      ov.alt = `${o.label}, shown in colour`;
+      ov.src = o.image;
+      box.append(base, ov);
+      const cap = document.createElement("figcaption");
+      const a = document.createElement("span"); a.textContent = o.label;
+      const b = document.createElement("span"); b.textContent = `${share(o.coverage)} of the photo`;
+      cap.append(a, b);
+      fig.append(box, cap);
+      grid.append(fig);
+    }
+    body.push(h, grid);
+  }
+  if (!body.length) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "Nothing more to show for this photo.";
+    body.push(p);
+  }
+  els.mapsBody.replaceChildren(...body);
+  els.mapsDialog.showModal();
+}
+
 async function compareStyles() {
   if (!state.file) return;
-  if (state.view === "trio") { hideTrio(); return; }
   if (state.trio) { showTrio(state.trio); return; }
   hideAlert();
   setState("working");
   els.queueNote.hidden = true;
-  els.steps.hidden = true;
-  els.overlayTitle.textContent = "Comparing all three styles…";
+  els.overlayTitle.textContent = "Restoring with all three styles…";
   const started = performance.now();
   els.elapsed.textContent = "0";
   state.timer = setInterval(() => (els.elapsed.textContent = String(Math.floor((performance.now() - started) / 1000))), 250);
@@ -748,22 +973,25 @@ async function restore() {
   setState("working");
   const started = performance.now();
   els.elapsed.textContent = "0";
-  state.timer = setInterval(() => (els.elapsed.textContent = String(Math.floor((performance.now() - started) / 1000))), 250);
   state.controller = new AbortController();
   const body = new FormData();
   body.append("file", state.file, state.file.name || "photo.jpg");
   body.append("style", state.style);
   const style = state.style;
   const run = newRun(style);
-  els.report.hidden = true;
   els.queueNote.hidden = true;
-  els.overlayTitle.textContent = "Restoring your photo…";
+  els.overlayTitle.textContent = `Restoring with ${styleName(style)}`;
   els.steps.hidden = false;
-  renderSteps(els.steps, run);
+  renderSteps(run);
+  state.timer = setInterval(() => {
+    els.elapsed.textContent = String(Math.floor((performance.now() - started) / 1000));
+    tickRunning(run);
+  }, 200);
   try {
     let data = await streamRestore(body, state.controller.signal, (kind, d) => onStage(run, kind, d));
     if (data) {
-      data.report = { text: buildReport(run, data), order: run.order.filter((s) => run.ms.has(s)), ms: run.ms };
+      data.run = run;
+      data.reportText = buildReport(run, data);
     } else {                                     // streaming is not available here: the plain request still works
       els.steps.hidden = true;
       data = await plainRestore(body, state.controller.signal);
@@ -789,17 +1017,15 @@ function showResult(data) {
     els.fileThumb.classList.remove("is-missing");
     els.fileThumb.src = data.original;
   }
-  if (state.view === "trio") hideTrio();
   els.viewer.classList.add("is-compare");
   setPos(50);
   els.restoreBtn.hidden = true;
   els.result.hidden = false;
-  els.compareHint.hidden = false;
-  showReport(data.report);
-  renderOverlays(data);
-  els.tools.hidden = false;
-  els.compareBtn.hidden = state.status.styles.filter((s) => s.available).length < 2;
+  if (data.run) { els.steps.hidden = false; renderSteps(data.run); } else { els.steps.hidden = true; }
+  showReport(data);
   setZoomable(true);
+  els.compareBtn.disabled = state.status.styles.filter((s) => s.available).length < 2;
+  setView(state.view === "trio" ? "compare" : state.view);
   els.successText.querySelector("span").textContent = `Restored with ${data.name}`;
   const secs = (data.clientMs ?? data.elapsed_ms) / 1000;
   els.resultMeta.textContent = `PNG · ${data.width} × ${data.height}${secs ? ` · took ${secs.toFixed(1)} s` : ""}`;
@@ -812,8 +1038,9 @@ function showResult(data) {
   } catch { /* keep the data URL */ }
   els.downloadBtn.download = `${baseName(state.file?.name)}-lumen-${data.name.toLowerCase().replace(/[^a-z]+/g, "-")}.png`;
   setState("done");
+  updateHint();
   els.downloadBtn.focus({ preventScroll: true });
-  announce(`Photo restored with ${data.name}. Drag across the photo to compare, or download it.`);
+  announce(`Photo restored with ${data.name}. Compare it, look closer, or download it.`);
 }
 
 function rememberForDetails(data) {
@@ -823,7 +1050,7 @@ function rememberForDetails(data) {
       width: data.width, height: data.height, elapsed_ms: data.elapsed_ms, client_ms: Math.round(data.clientMs),
       details: data.details,
     }));
-  } catch { /* storage may be unavailable (private mode); details page will show its empty state */ }
+  } catch { /* storage may be unavailable (private mode); the details page shows its empty state */ }
 }
 
 const THUMB_PLACEHOLDER = "data:image/svg+xml," + encodeURIComponent(
@@ -833,12 +1060,13 @@ const THUMB_PLACEHOLDER = "data:image/svg+xml," + encodeURIComponent(
 
 // ------------------------------------------------------------------ boot
 async function boot() {
+  initShell();
   initViewerInput();
   setState("empty");
+  initLanding().catch(() => {});
   els.imgAfter.addEventListener("load", () => showPreview(true));
   els.imgAfter.addEventListener("error", () => { if (!state.shown) showPreview(false); });
   els.fileThumb.addEventListener("error", () => {
-    // the browser cannot preview this file: show a neutral picture icon instead of a broken-image glyph
     if (els.fileThumb.src === THUMB_PLACEHOLDER) return;
     els.fileThumb.classList.add("is-missing");
     els.fileThumb.src = THUMB_PLACEHOLDER;
@@ -846,8 +1074,13 @@ async function boot() {
   new ResizeObserver(onStageResize).observe(els.stage);
   window.addEventListener("resize", onStageResize);
   els.changesBtn.addEventListener("click", toggleChanges);
-  els.compareBtn.addEventListener("click", compareStyles);
   els.sideBtn.addEventListener("click", saveSideBySide);
+  els.closerBtn.addEventListener("click", openMaps);
+  els.mapsClose.addEventListener("click", () => els.mapsDialog.close());
+  els.mapsDialog.addEventListener("click", (e) => { if (e.target === els.mapsDialog) els.mapsDialog.close(); });
+  els.noiseHintBtn.addEventListener("click", () => { setStyle("quality_guided"); els.restoreBtn.hidden || els.restoreBtn.focus(); });
+  for (const b of els.modes.querySelectorAll("button")) b.addEventListener("click", () => setView(b.dataset.mode));
+  els.developRange.addEventListener("input", () => requestAnimationFrame(drawDevelop));
 
   els.fileInput.addEventListener("change", () => { if (els.fileInput.files[0]) selectFile(els.fileInput.files[0]); els.fileInput.value = ""; });
   els.dropzone.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.fileInput.click(); } });
@@ -874,7 +1107,7 @@ async function boot() {
     const res = await fetch("/api/status");
     state.status = await res.json();
     state.limitBytes = state.status.limits.max_file_mb * 1024 * 1024;
-    els.limitsText.textContent = `JPEG, PNG, WebP, BMP or TIFF · up to ${state.status.limits.max_file_mb} MB`;
+    els.limitsText.textContent = `JPEG, PNG, WebP, BMP or TIFF, up to ${state.status.limits.max_file_mb} MB`;
     if (!state.status.styles.some((s) => s.available)) {
       els.notice.textContent = "Restoration is temporarily unavailable on this server. Please try again later.";
       els.notice.hidden = false;
@@ -895,6 +1128,7 @@ async function boot() {
       b.type = "button";
       b.className = "example";
       b.innerHTML = `<img alt="" loading="lazy"><span></span>`;
+      b.querySelector("img").fetchPriority = "low";      // never compete with the landing photo
       b.querySelector("img").src = ex.url;
       b.querySelector("span").textContent = ex.title;
       b.setAttribute("aria-label", `Try the example photo: ${ex.title}`);
@@ -904,6 +1138,7 @@ async function boot() {
     }));
     els.examplesBlock.hidden = examples.length === 0;
   } catch { /* examples are optional */ }
+  document.body.dataset.ready = "1";
 }
 
 boot();
