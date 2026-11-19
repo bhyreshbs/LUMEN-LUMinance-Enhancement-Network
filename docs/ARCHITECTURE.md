@@ -7,7 +7,7 @@ flowchart TB
         DT["How it works /details<br/>last-run details, evaluation,<br/>research lab, system status"] --> M
     end
     subgraph API["app/server.py - FastAPI"]
-        H["POST /api/restore, /api/compare, /api/research<br/>upload streamed to temp file, size-limited, deleted<br/>one run at a time, queue limit -> 503<br/>CSP + security headers, JSON errors"]
+        H["POST /api/restore, /api/restore/stream (SSE), /api/compare, /api/research<br/>upload streamed to temp file, size-limited, deleted<br/>one run at a time, queue limit -> 503<br/>CSP + security headers, JSON errors"]
     end
     M --> H
     subgraph SVC["app/service.py - EnhancementService"]
@@ -62,11 +62,11 @@ flowchart TB
 | Module | Responsibility |
 |---|---|
 | `app/app.py` | Entry point: CPU-thread and cuDNN runtime setup, service warm-up, Uvicorn |
-| `app/server.py` | FastAPI: serves the two pages and static assets, JSON API (`/api/status`, `/api/examples`, `/api/restore`, `/api/compare`, `/api/research`, `/healthz`), upload streaming and deletion, single-inference gate with queue limit, security headers |
+| `app/server.py` | FastAPI: serves the two pages and static assets, JSON API (`/api/status`, `/api/examples`, `/api/restore`, `/api/restore/stream`, `/api/compare`, `/api/research`, `/healthz`), upload streaming and deletion, single-inference gate with queue limit, security headers |
 | `app/web/` | Frontend: `index.html` + `static/js/workspace.js` (workspace state machine, comparison slider, download), `details.html` + `static/js/details.js` (technical area), `static/css/lumen.css` (responsive, light/dark), `static/data/evaluation.json` (eval15 tables, mirrored from `eval_P1_T66.md` and checked by a test) |
 | `app/service.py` | Mode availability (checkpoint + SHA-256, QGH config), enhancement, Compare All with one model run, Markdown summaries (unchanged by the UI redesign) |
 | `lumen/imageio.py` | Safe upload decoding and array validation before any float allocation |
-| `lumen/pipeline.py` | Entry point: validation, resizing, mode dispatch, model and config caching, per-run metadata |
+| `lumen/pipeline.py` | Entry point: validation, resizing, mode dispatch, model and config caching, per-run metadata, optional read-only `progress` observer (stage boundaries for the streamed endpoint; output identical with or without it) |
 | `lumen/classical/` | Adaptive classical pipeline (illumination, Retinex, denoise, CLAHE, colour) |
 | `lumen/deep/` | Retinexformer port, Zero-DCE++, inference wrapper, checkpoint hashes |
 | `lumen/hybrid/quality_guided.py` | Quality-Guided Hybrid and its calibrated configuration |

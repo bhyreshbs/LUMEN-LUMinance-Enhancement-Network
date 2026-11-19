@@ -14,6 +14,8 @@ const els = {
   result: $("result"), successText: $("successText"), downloadBtn: $("downloadBtn"), resultMeta: $("resultMeta"),
   alert: $("alert"), alertTitle: $("alertTitle"), alertText: $("alertText"), alertActions: $("alertActions"),
   compareHint: $("compareHint"), live: $("live"),
+  overlayTitle: $("overlayTitle"), queueNote: $("queueNote"), steps: $("steps"),
+  report: $("report"), reportText: $("reportText"), stepsLog: $("stepsLog"),
 };
 
 const ACCEPT = new Set(["image/jpeg", "image/png", "image/webp", "image/bmp", "image/tiff"]);
@@ -109,6 +111,7 @@ function onStyleChange() {
   if (cached) { showResult(cached); return; }
   if (state.shown) {           // a result for another style is on screen: offer to restore with this style
     els.result.hidden = true;
+    els.report.hidden = true;
     els.restoreBtn.hidden = false;
     const name = state.status.styles.find((s) => s.id === state.style).name;
     els.restoreLabel.textContent = `Restore with ${name}`;
@@ -210,6 +213,7 @@ function selectFile(file) {
   els.imgAfter.alt = "Your original photo";
   els.viewer.classList.remove("is-compare");
   els.result.hidden = true;
+  els.report.hidden = true;
   els.compareHint.hidden = true;
   els.restoreBtn.hidden = false;
   els.restoreLabel.textContent = "Restore photo";
@@ -231,6 +235,144 @@ async function selectExample(ex) {
   }
 }
 
+// ------------------------------------------------------------------ progress and report
+// The server reports each stage as it really finishes. Everything shown here comes from those reports:
+// no stage is invented, and every sentence of the summary maps to one reported value.
+const STEP_LABELS = {
+  decoded: "Reading your photo",
+  analysed: "Checking the lighting",
+  restored: "Restoring brightness and detail",
+  refined: "Protecting bright areas and colour",
+};
+const LIGHTING = { extremely_dark: "very dark", non_uniform: "unevenly lit", low_light: "dark", normal: "fairly bright" };
+const seconds = (ms) => (ms < 100 ? "under 0.1 s" : `${(ms / 1000).toFixed(1)} s`);
+const share = (fraction) => (fraction * 100 < 0.1 ? "under 0.1%" : `${(fraction * 100).toFixed(1)}%`);
+
+const newRun = (style) => ({
+  order: style === "classical" ? ["decoded", "analysed", "restored"] : Object.keys(STEP_LABELS),
+  ms: new Map(), events: {}, last: 0, active: "decoded",
+});
+
+function renderSteps(list, run) {
+  list.replaceChildren(...run.order.map((stage) => {
+    const li = document.createElement("li");
+    const label = document.createElement("span");
+    label.textContent = STEP_LABELS[stage];
+    li.append(label);
+    if (run.ms.has(stage)) {
+      li.className = "is-done";
+      const time = document.createElement("span");
+      time.className = "steps__time";
+      time.textContent = seconds(run.ms.get(stage));
+      li.append(time);
+    } else if (stage === run.active) {
+      li.className = "is-active";
+    }
+    return li;
+  }));
+}
+
+function onStage(run, kind, d) {
+  if (kind === "queued") {
+    els.queueNote.textContent = d.ahead === 1 ? "Waiting for 1 other photo to finish…" : `Waiting for ${d.ahead} other photos to finish…`;
+    els.queueNote.hidden = false;
+    return;
+  }
+  if (!(kind in STEP_LABELS)) return;          // a stage this page does not know: ignore it
+  els.queueNote.hidden = true;
+  if (kind === "decoded" && Array.isArray(d.plan)) run.order = d.plan.filter((s) => s in STEP_LABELS);
+  run.events[kind] = d;
+  run.ms.set(kind, Math.max(0, d.t_ms - run.last));
+  run.last = d.t_ms;
+  run.active = run.order[run.order.indexOf(kind) + 1];
+  els.overlayTitle.textContent = run.active ? `${STEP_LABELS[run.active]}…` : "Finishing up…";
+  renderSteps(els.steps, run);
+}
+
+function buildReport(run, data) {
+  const ev = run.events;
+  const out = [];
+  if (ev.analysed && ev.analysed.category) {
+    out.push(`Your photo looked ${LIGHTING[ev.analysed.category] || "dark"} (average brightness ${Math.round(ev.analysed.mean_lum * 100)}%).`);
+  }
+  if (ev.restored) out.push(`The ${data.name} style lifted the brightness and brought back detail in ${seconds(ev.restored.ms)}.`);
+  const r = ev.refined;
+  if (r) {
+    const hue = r.highlight_hue;
+    const found = r.refinements || {};
+    const applied = r.applied || [];
+    if (hue && hue.applied) out.push(`Bright spots such as windows or lamps kept their original colour (${share(hue.coverage)} of the photo).`);
+    if (applied.includes("highlight")) out.push(`Near-white areas were softened so they don't wash out (${share(found.highlight.coverage)} of the photo).`);
+    if (applied.includes("noise")) out.push(`Grain in smooth areas was reduced (${share(found.noise.coverage)} of the photo).`);
+    if (applied.includes("colour")) out.push(`Colours were nudged back towards the original (${share(found.colour.coverage)} of the photo).`);
+    if (applied.includes("contrast")) out.push(`Flattened detail was sharpened (${share(found.contrast.coverage)} of the photo).`);
+    if (r.identity === true && !(hue && hue.applied)) out.push("Nothing else needed fixing.");
+    else if (r.refinements === undefined && hue && !hue.applied) out.push("No bright areas needed their colour protected.");
+  }
+  return out.join(" ");
+}
+
+function showReport(report) {
+  if (!report || !report.text) { els.report.hidden = true; return; }
+  els.reportText.textContent = report.text;
+  renderSteps(els.stepsLog, { order: report.order, ms: report.ms, active: null });
+  els.report.hidden = false;
+}
+
+// Server-Sent Events over fetch (EventSource cannot POST a file).
+function parseSse(raw) {
+  let event = "message";
+  let data = "";
+  for (const line of raw.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) data += line.slice(5).trim();
+  }
+  if (!data) return null;
+  try { return { event, data: JSON.parse(data) }; } catch { return null; }
+}
+
+// Resolves with the finished result, or null if streaming is not available (the caller then uses the plain request).
+async function streamRestore(body, signal, onEvent) {
+  const res = await fetch("/api/restore/stream", { method: "POST", body, signal });
+  if (!res.ok) {
+    if (res.status === 404 || res.status === 405) return null;
+    const data = await res.json().catch(() => ({}));
+    throw Object.assign(new Error(data.error || "The photo couldn't be restored."), { status: res.status, code: data.code });
+  }
+  const streaming = (res.headers.get("content-type") || "").includes("text/event-stream");
+  if (!streaming || !res.body || !res.body.getReader) return null;
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let seen = 0;
+  let result = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let end;
+    while ((end = buffer.indexOf("\n\n")) >= 0) {
+      const ev = parseSse(buffer.slice(0, end));
+      buffer = buffer.slice(end + 2);
+      if (!ev) continue;
+      seen += 1;
+      if (ev.event === "done") result = ev.data;
+      else if (ev.event === "error") throw Object.assign(new Error(ev.data.error), { status: ev.data.status, code: ev.data.code });
+      else onEvent(ev.event, ev.data);
+    }
+  }
+  if (result) return result;
+  if (seen === 0) return null;
+  throw new Error("The connection was interrupted before the photo was finished.");
+}
+
+async function plainRestore(body, signal) {
+  const res = await fetch("/api/restore", { method: "POST", body, signal });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || "The photo couldn't be restored."), { status: res.status, code: data.code });
+  return data;
+}
+
 // ------------------------------------------------------------------ restoring
 async function restore() {
   if (!state.file || !state.style) return;
@@ -244,10 +386,20 @@ async function restore() {
   body.append("file", state.file, state.file.name || "photo.jpg");
   body.append("style", state.style);
   const style = state.style;
+  const run = newRun(style);
+  els.report.hidden = true;
+  els.queueNote.hidden = true;
+  els.overlayTitle.textContent = "Restoring your photo…";
+  els.steps.hidden = false;
+  renderSteps(els.steps, run);
   try {
-    const res = await fetch("/api/restore", { method: "POST", body, signal: state.controller.signal });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw Object.assign(new Error(data.error || "The photo couldn't be restored."), { status: res.status, code: data.code });
+    let data = await streamRestore(body, state.controller.signal, (kind, d) => onStage(run, kind, d));
+    if (data) {
+      data.report = { text: buildReport(run, data), order: run.order.filter((s) => run.ms.has(s)), ms: run.ms };
+    } else {                                     // streaming is not available here: the plain request still works
+      els.steps.hidden = true;
+      data = await plainRestore(body, state.controller.signal);
+    }
     data.clientMs = performance.now() - started;
     state.results.set(style, data);
     rememberForDetails(data);
@@ -290,6 +442,7 @@ function showResult(data) {
   els.restoreBtn.hidden = true;
   els.result.hidden = false;
   els.compareHint.hidden = false;
+  showReport(data.report);
   els.successText.querySelector("span").textContent = `Restored with ${data.name}`;
   const secs = (data.clientMs ?? data.elapsed_ms) / 1000;
   els.resultMeta.textContent = `PNG · ${data.width} × ${data.height}${secs ? ` · took ${secs.toFixed(1)} s` : ""}`;

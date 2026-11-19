@@ -8,7 +8,9 @@ translates HTTP to service calls:
   GET  /api/status          user-facing styles + technical status
   GET  /api/examples        example photos
   POST /api/restore         multipart (file, style)            -> original + restored image (+ details)
-  POST /api/compare         multipart (file)                    -> every available style, Retinexformer once
+  POST /api/restore/stream  same input; Server-Sent Events: queued?, decoded, analysed, restored, refined?, done
+                            (done carries exactly the /api/restore payload) or error
+  POST /api/compare        multipart (file)                    -> every available style, Retinexformer once
   POST /api/research        multipart (file, method, disabled)  -> research baselines (fusion hybrid, Zero-DCE++)
   GET  /healthz             liveness
 
@@ -21,15 +23,17 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import logging
 import os
 import tempfile
+import time
 from pathlib import Path
 
 import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
@@ -43,6 +47,7 @@ APP_DIR = Path(__file__).resolve().parent
 WEB_DIR = APP_DIR / "web"
 EXAMPLES_DIR = APP_DIR / "examples"
 MAX_QUEUE = int(os.environ.get("LUMEN_MAX_QUEUE", "16"))
+KEEPALIVE_SECONDS = 10  # SSE comment sent while a queued request waits, so proxies keep the connection open
 
 # User-facing names: plain language, no model or research terminology.
 STYLES = {
@@ -94,6 +99,19 @@ def _payload(r: EnhanceResult, style_key: str | None = None) -> dict:
     return {"style": style_key or r.mode, "name": style["name"], "width": w, "height": h,
             "elapsed_ms": round(r.latency_ms, 1), "original": _data_url(r.original, "jpg"),
             "restored": _data_url(r.enhanced, "png"), "details": _details(r)}
+
+
+def _json_default(o):
+    """numpy scalars/arrays that end up in diagnostics."""
+    if hasattr(o, "item") and getattr(o, "ndim", 1) == 0:
+        return o.item()
+    if hasattr(o, "tolist"):
+        return o.tolist()
+    raise TypeError(f"{type(o).__name__} is not JSON serialisable")
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, separators=(',', ':'), default=_json_default)}\n\n"
 
 
 async def _save_upload(upload: UploadFile | None) -> Path:
@@ -229,6 +247,93 @@ def create_app(service: EnhancementService) -> FastAPI:
             raise ApiError(400, "Unknown restoration style.", "bad_style")
         r = await with_upload(file, lambda p: service.enhance(p, style))
         return _payload(r, style)
+
+    @app.post("/api/restore/stream")
+    async def api_restore_stream(file: UploadFile | None = File(None), style: str = Form(STANDARD)):
+        """Same restoration as /api/restore, reported as it happens. Problems found before the work starts (no file,
+        unknown style, too large, queue full) are ordinary JSON errors; problems with the photo itself arrive as an
+        `error` event, because the stream is already open by then."""
+        if style not in STYLES:
+            raise ApiError(400, "Unknown restoration style.", "bad_style")
+        path = await _save_upload(file)
+        if state["waiting"] >= MAX_QUEUE:
+            path.unlink(missing_ok=True)
+            raise ApiError(503, "LUMEN is busy restoring other photos. Please try again in a moment.", "busy")
+
+        loop = asyncio.get_running_loop()
+        events: asyncio.Queue = asyncio.Queue()
+        ahead = state["waiting"]          # photos running or waiting before this one
+        state["waiting"] += 1             # counted from now, exactly like run_exclusive()
+        counted = [True]
+
+        def put(kind: str, data: dict | None) -> None:
+            loop.call_soon_threadsafe(events.put_nowait, (kind, data))
+
+        def release() -> None:
+            if counted[0]:
+                counted[0] = False
+                state["waiting"] -= 1
+
+        # the steps this style will report, so the page lists only the ones that really happen
+        plan = ["decoded", "analysed", "restored"]
+        if style == QUALITY_GUIDED or (style == STANDARD and service.hue_enabled):
+            plan.append("refined")
+
+        def job():
+            t0 = time.perf_counter()
+
+            def progress(stage: str, data: dict) -> None:
+                extra = {"plan": plan} if stage == "decoded" else {}
+                put(stage, {**data, **extra, "t_ms": round((time.perf_counter() - t0) * 1000)})
+
+            return service.enhance(path, style, progress=progress)
+
+        async def worker() -> None:
+            try:
+                if ahead:
+                    put("queued", {"ahead": ahead})
+                try:
+                    async with gate:
+                        result = await run_in_threadpool(job)
+                finally:
+                    release()
+                put("done", await run_in_threadpool(_payload, result, style))
+            except ImageValidationError as e:
+                put("error", {"error": str(e), "code": "invalid_image", "status": 422})
+            except ModeUnavailable as e:
+                put("error", {"error": str(e), "code": "unavailable", "status": 409})
+            except ApiError as e:
+                put("error", {"error": e.message, "code": e.code, "status": e.status})
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 - logged; the user sees a generic message
+                log.exception("Unexpected error while streaming a restoration")
+                put("error", {"error": "Something went wrong while restoring this photo. Please try another one.",
+                              "code": "internal", "status": 500})
+            finally:
+                put("end", None)
+
+        task = asyncio.create_task(worker())
+        # Runs even if the task is cancelled before it starts: the upload is always deleted, the slot always freed.
+        task.add_done_callback(lambda _t: (path.unlink(missing_ok=True), release()))
+
+        async def stream():
+            try:
+                while True:
+                    try:
+                        kind, data = await asyncio.wait_for(events.get(), KEEPALIVE_SECONDS)
+                    except asyncio.TimeoutError:
+                        yield ": keepalive\n\n"
+                        continue
+                    if kind == "end":
+                        break
+                    yield _sse(kind, data)
+            finally:
+                if not task.done():       # the visitor left: stop waiting in the queue (a running model call finishes)
+                    task.cancel()
+
+        return StreamingResponse(stream(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
     @app.post("/api/compare")
     async def api_compare(file: UploadFile | None = File(None)):

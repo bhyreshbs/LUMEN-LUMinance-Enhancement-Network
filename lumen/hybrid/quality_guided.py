@@ -344,10 +344,16 @@ class QualityGuidedHybrid:
                 "timing_ms": {"refine": round((time.perf_counter() - t_start) * 1000, 1)}}
         return QualityGuidedOutput(out, steps, info)
 
-    def __call__(self, img: np.ndarray) -> QualityGuidedOutput:
+    def __call__(self, img: np.ndarray, on_model=None) -> QualityGuidedOutput:
+        """`on_model(ms)`, if given, is called once the model has finished (progress reporting only)."""
         t0 = time.perf_counter()
         r, aux = self.deep(img)  # the only model call
         t1 = time.perf_counter()
+        if on_model is not None:
+            try:
+                on_model(round((t1 - t0) * 1000, 1))
+            except Exception:  # noqa: BLE001 - an observer must not affect the result
+                pass
         res = self.refine(r, img)
         res.info["timing_ms"] = {"model": round((t1 - t0) * 1000, 1), "refine": res.info["timing_ms"]["refine"]}
         res.intermediates[f"{self.deep.name}_map"] = np.repeat(aux[..., None], 3, -1)

@@ -69,8 +69,10 @@
         <div class="overlay" id="overlay" hidden>
           <div class="overlay__card" role="status" aria-live="polite">
             <div class="spinner" aria-hidden="true"></div>
-            <p class="overlay__title">Restoring your photo…</p>
+            <p class="overlay__title" id="overlayTitle">Restoring your photo…</p>
             <p class="overlay__sub"><span id="elapsed">0</span> s · usually a few seconds</p>
+            <p class="overlay__queue" id="queueNote" hidden></p>
+            <ol class="steps" id="steps" aria-hidden="true" hidden></ol>
             <div class="progress" aria-hidden="true"><span></span></div>
           </div>
         </div>
@@ -119,6 +121,15 @@
           </div>
           <div class="alert__actions" id="alertActions"></div>
         </div>
+
+        <section class="report" id="report" aria-labelledby="reportTitle" hidden>
+          <h2 class="report__title" id="reportTitle">What LUMEN did</h2>
+          <p class="report__text" id="reportText"></p>
+          <details class="report__steps">
+            <summary>Show steps</summary>
+            <ol class="steps steps--log" id="stepsLog"></ol>
+          </details>
+        </section>
 
         <p class="hint" id="compareHint" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6-6 6 6 6"/><path d="m15 6 6 6-6 6"/></svg>

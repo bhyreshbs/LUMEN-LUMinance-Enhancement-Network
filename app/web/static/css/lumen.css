@@ -196,6 +196,28 @@ button, input, select { font: inherit; color: inherit; }
 .progress { height: 4px; margin-top: 16px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
 .progress span { display: block; height: 100%; width: 40%; border-radius: 4px; background: var(--accent);
                  animation: slide 1.4s var(--ease) infinite; }
+.overlay__queue { margin: 8px 0 0; color: var(--text-2); font-size: 14px; }
+
+/* the stages of one restoration: pending, running, finished (with the time each took) */
+.steps { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; text-align: left; font-size: 14px; }
+.steps li { display: grid; grid-template-columns: 16px 1fr auto; gap: 10px; align-items: center; color: var(--muted); }
+.steps li::before { content: ""; box-sizing: border-box; width: 12px; height: 12px; justify-self: center; border-radius: 50%;
+                    border: 2px solid var(--border-strong); }
+.steps li.is-active { color: var(--text); font-weight: 600; }
+.steps li.is-active::before { border-color: var(--accent); border-top-color: transparent; animation: spin .9s linear infinite; }
+.steps li.is-done { color: var(--text-2); }
+.steps li.is-done::before { background: var(--success); border-color: var(--success); }
+.steps__time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; font-weight: 400; }
+
+/* what LUMEN did, in plain words, under the download button */
+.report { padding: 14px 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); }
+.report__title { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--muted);
+                 text-transform: uppercase; letter-spacing: .08em; }
+.report__text { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.55; }
+.report__steps { margin-top: 10px; font-size: 13px; color: var(--muted); }
+.report__steps summary { cursor: pointer; width: fit-content; border-radius: 6px; }
+.report__steps summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.steps--log { margin-top: 10px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
 

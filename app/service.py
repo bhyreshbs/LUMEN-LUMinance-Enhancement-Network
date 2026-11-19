@@ -205,21 +205,24 @@ class EnhancementService:
         return res
 
     # ------------------------------------------------------------------ public API
-    def enhance(self, image, mode: str = STANDARD, compute_niqe: bool = False) -> EnhanceResult:
+    def enhance(self, image, mode: str = STANDARD, compute_niqe: bool = False, progress=None) -> EnhanceResult:
+        """`progress(stage, data)`: optional observer of the real stage boundaries (see LumenPipeline.run);
+        it never changes the result."""
         self._require(mode)
         arr = self.load_input(image)
         if mode == STANDARD:
-            r = self.pipe.run(arr, "deep", deep_model="retinexformer", highlight_hue=self.hue_enabled)
+            r = self.pipe.run(arr, "deep", deep_model="retinexformer", highlight_hue=self.hue_enabled, progress=progress)
             self._last_input = r.input
             return self._result(mode, MODE_LABELS[mode], r, compute_niqe,
                                 timing={"model": round(r.latency_ms, 1), "total": round(r.latency_ms, 1)})
         if mode == QUALITY_GUIDED:
-            r = self.pipe.run(arr, "quality_guided_hybrid", deep_model="retinexformer", highlight_hue=self.hue_enabled)
+            r = self.pipe.run(arr, "quality_guided_hybrid", deep_model="retinexformer", highlight_hue=self.hue_enabled,
+                              progress=progress)
             self._last_input = r.input
             t = r.info.get("timing_ms", {})
             return self._result(mode, MODE_LABELS[mode], r, compute_niqe,
                                 timing={**t, "total": round(r.latency_ms, 1)})
-        r = self.pipe.run(arr, "classical")
+        r = self.pipe.run(arr, "classical", progress=progress)
         self._last_input = r.input
         return self._result(mode, MODE_LABELS[mode], r, compute_niqe)
 

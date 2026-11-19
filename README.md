@@ -69,6 +69,11 @@ dragged, or moved with the arrow keys. The restored image downloads as a PNG.
 | **Highlight-safe** | Retinexformer + hue fix + Quality Guided | |
 | **Quick** | Classical | the only style offered without the checkpoint |
 
+While a photo is being restored, the workspace lists each step as it really finishes, with its time, and afterwards
+explains in plain words what was done to that photo (for example whether bright areas needed protecting). Every line comes
+from values the pipeline reported for that photo. This uses `POST /api/restore/stream` (Server-Sent Events); the page
+falls back to `POST /api/restore` if streaming is unavailable, and both return the identical image.
+
 The workspace shows no model names, metrics or diagnostics. All of that is on **How it works** (`/details`):
 - how each style works
 - the technical details of your last restoration (model, checkpoint, device, timings, QGH refinements and
