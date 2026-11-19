@@ -74,6 +74,14 @@ explains in plain words what was done to that photo (for example whether bright 
 from values the pipeline reported for that photo. This uses `POST /api/restore/stream` (Server-Sent Events); the page
 falls back to `POST /api/restore` if streaming is unavailable, and both return the identical image.
 
+Once a photo is restored you can inspect it:
+- **Zoom and pan** the before/after slider with the mouse wheel, a two-finger pinch, the `+` / `−` / fit buttons, or the keyboard
+  (`+`, `-`, `0`; Alt + arrows to pan). Double-click resets. Dragging the divider still moves the comparison.
+- **What changed** overlays, in the colour listed in a legend, the areas where LUMEN protected highlight colour, softened
+  bright areas or reduced grain, each with the share of the photo it touched. It only appears when something was applied.
+- **Compare all styles** shows Natural, Highlight-safe and Quick side by side, with one shared zoom.
+- **Save side by side** downloads one PNG with the original on the left and the restored photo on the right.
+
 The workspace shows no model names, metrics or diagnostics. All of that is on **How it works** (`/details`):
 - how each style works
 - the technical details of your last restoration (model, checkpoint, device, timings, QGH refinements and

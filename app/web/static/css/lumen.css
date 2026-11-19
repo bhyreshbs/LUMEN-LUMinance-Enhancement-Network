@@ -15,6 +15,7 @@
   --muted: #8790a4;
   --accent: #f6b73c;
   --accent-2: #ffd27a;
+  --accent-text: #ffd27a;     /* amber text on the soft amber fill (the "Recommended" pill) */
   --accent-ink: #1d1404;
   --accent-soft: rgba(246, 183, 60, 0.14);
   --danger: #ff7a7a;
@@ -44,6 +45,7 @@
     --muted: #5f687b;
     --accent: #f0a514;
     --accent-2: #c77d00;
+    --accent-text: #7a4a00;   /* 6:1 on the soft amber fill; --accent-2 was only 2.7:1 there */
     --accent-ink: #1d1404;
     --accent-soft: rgba(240, 165, 20, 0.14);
     --danger: #c62828;
@@ -244,9 +246,10 @@ button, input, select { font: inherit; color: inherit; }
 .style__name { font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .style__desc { grid-column: 2; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
 .pill { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 2px 8px;
-        border-radius: 999px; background: var(--accent-soft); color: var(--accent-2); }
+        border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); }
 .style input:checked + .style__box { border-color: var(--accent); background: color-mix(in srgb, var(--surface-2) 90%, var(--accent) 10%); }
 .style input:checked + .style__box .style__dot { border-color: var(--accent); }
+.style input:checked + .style__box .style__desc { color: var(--text-2); }   /* the tinted fill needs a stronger grey */
 .style input:checked + .style__box .style__dot::after { transform: scale(1); }
 .style input:focus-visible + .style__box { outline: 3px solid var(--accent); outline-offset: 2px; }
 .style input:disabled + .style__box { opacity: .5; cursor: not-allowed; }
@@ -267,6 +270,55 @@ button, input, select { font: inherit; color: inherit; }
 .alert__text { margin: 0; color: var(--text-2); font-size: 14px; }
 .alert__actions { grid-column: 2; display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .alert__actions .btn { min-height: 38px; padding: 0 14px; font-size: 14px; }
+
+/* ---------------------------------------------------------------- inspecting the result */
+/* One zoom and pan transform for every picture in the stage (set on .stage by the script). The comparison divider,
+   its handle and the labels are not pictures, so they stay put while the content moves under them. */
+.stage { --zs: 1; --zx: 0px; --zy: 0px; }
+.viewer img, .tile img { transform: translate(var(--zx), var(--zy)) scale(var(--zs)); transform-origin: 0 0; }
+.stage.is-zoomed .viewer img, .stage.is-zoomed .tile img { will-change: transform; }
+.stage.is-zoomed .zoomhost { cursor: grab; touch-action: none; }
+.stage.is-panning .zoomhost { cursor: grabbing; }
+
+.viewer__ov { position: absolute; inset: 0; pointer-events: none; }
+.viewer__ov img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+
+.vtools { position: absolute; left: 50%; bottom: 12px; z-index: 3; transform: translateX(-50%); display: flex;
+          align-items: center; gap: 2px; padding: 5px; max-width: calc(100% - 16px); border-radius: 999px; color: #fff;
+          background: rgba(10, 12, 18, .78); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, .35); }
+.vtool { min-width: 40px; height: 40px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent;
+         color: inherit; font: 600 14px/1 var(--font); display: grid; place-items: center; cursor: pointer; white-space: nowrap; }
+.vtool svg { width: 20px; height: 20px; }
+.vtool:hover:not(:disabled) { background: rgba(255, 255, 255, .16); }
+.vtool:disabled { opacity: .4; cursor: default; }
+.vtool:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+/* pressed wins over hover, so the amber fill (and its dark text) never turns into grey while the pointer rests on it */
+.vtool[aria-pressed="true"], .vtool[aria-pressed="true"]:hover:not(:disabled) { background: var(--accent); color: var(--accent-ink); }
+.vtools__zoom { min-width: 50px; text-align: center; font: 600 13px/1 var(--font); font-variant-numeric: tabular-nums; }
+.vtools__sep { width: 1px; height: 22px; margin: 0 6px; background: rgba(255, 255, 255, .28); }
+
+/* the three styles side by side */
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: 100%;
+        padding: 16px 16px 76px; align-content: center; }
+.tile { position: relative; margin: 0; width: 100%; overflow: hidden; border-radius: 12px; line-height: 0;
+        box-shadow: var(--shadow); background: var(--surface-3); user-select: none; -webkit-user-select: none;
+        touch-action: pan-y; }
+.tile img { display: block; width: 100%; height: 100%; object-fit: contain; -webkit-user-drag: none; }
+.tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.tile .tag { top: 8px; left: 8px; }
+
+.tools { display: grid; gap: 10px; }
+.legend, .report { padding: 14px 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); }
+.legend__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; color: var(--text-2); }
+.legend__list li { display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center; }
+.legend__swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border-strong); }
+.legend__share { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 860px) {
+  .stage.has-tools { padding-bottom: 68px; }
+  .trio { grid-template-columns: 1fr; padding: 4px 0 0; }
+}
 
 .footer { padding: 20px clamp(16px, 4vw, 40px) 28px; text-align: center; color: var(--muted); font-size: 14px; }
 .footer a { color: var(--text-2); }

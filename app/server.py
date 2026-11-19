@@ -58,6 +58,16 @@ STYLES = {
     CLASSICAL: {"name": "Quick", "recommended": False,
                 "summary": "Lightweight and fast, but less accurate on very dark photos."},
 }
+# "What changed" overlays: only refinements that really changed the photo are sent. Plain language, no model terms.
+OVERLAYS = {
+    "highlight_hue": ("Colour kept in bright spots", "#3dd68c"),
+    "highlight": ("Bright areas softened", "#ff5fa2"),
+    "noise": ("Grain reduced", "#4cc9f0"),
+    "colour": ("Colour nudged back", "#f6b73c"),
+    "contrast": ("Detail sharpened", "#b794f6"),
+}
+OVERLAY_MAX_SIDE = 512     # the masks are feathered, so a smaller picture scaled up by the browser loses nothing
+OVERLAY_OPACITY = 0.55     # strong enough to see where, light enough that the photo stays readable underneath
 EXAMPLE_TITLES = {
     "coffee_dark": "Café table", "chelsea_extremely_dark": "Very dark room",
     "astronaut_uneven_light": "Uneven light", "rocket_night_highlights": "Night with bright lights",
@@ -81,6 +91,27 @@ def _data_url(rgb: np.ndarray, fmt: str) -> str:
     return f"data:{mime};base64," + base64.b64encode(buf.tobytes()).decode("ascii")
 
 
+def _overlay_url(mask: np.ndarray, tint: str) -> str:
+    """Transparent PNG: the tint colour, with the refinement's soft mask as its opacity."""
+    h, w = mask.shape
+    scale = min(1.0, OVERLAY_MAX_SIDE / max(h, w))
+    if scale < 1.0:
+        mask = cv2.resize(mask, (max(1, round(w * scale)), max(1, round(h * scale))), interpolation=cv2.INTER_AREA)
+    rgba = np.empty((*mask.shape, 4), np.uint8)
+    rgba[..., 0], rgba[..., 1], rgba[..., 2] = (int(tint[i:i + 2], 16) for i in (5, 3, 1))  # BGR order for OpenCV
+    rgba[..., 3] = np.clip(mask * OVERLAY_OPACITY * 255.0, 0, 255).astype(np.uint8)
+    ok, buf = cv2.imencode(".png", rgba)
+    if not ok:
+        raise ApiError(500, "The change overlay could not be encoded.", "encode_failed")
+    return "data:image/png;base64," + base64.b64encode(buf.tobytes()).decode("ascii")
+
+
+def _overlays(r: EnhanceResult) -> list[dict]:
+    return [{"id": key, "label": label, "color": tint, "coverage": round(r.masks[key][1], 5),
+             "image": _overlay_url(r.masks[key][0], tint)}
+            for key, (label, tint) in OVERLAYS.items() if key in r.masks]
+
+
 def _details(r: EnhanceResult) -> dict:
     """Technical information for the Details page (never shown in the workspace)."""
     h, w = r.original.shape[:2]
@@ -98,7 +129,7 @@ def _payload(r: EnhanceResult, style_key: str | None = None) -> dict:
     style = STYLES.get(style_key or r.mode, {"name": r.label})
     return {"style": style_key or r.mode, "name": style["name"], "width": w, "height": h,
             "elapsed_ms": round(r.latency_ms, 1), "original": _data_url(r.original, "jpg"),
-            "restored": _data_url(r.enhanced, "png"), "details": _details(r)}
+            "restored": _data_url(r.enhanced, "png"), "overlays": _overlays(r), "details": _details(r)}
 
 
 def _json_default(o):

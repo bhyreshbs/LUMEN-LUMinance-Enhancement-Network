@@ -118,8 +118,10 @@ class LumenPipeline:
                 steps = {f"{enh.name}_map": np.repeat(aux[..., None], 3, -1)}
                 info = self.deep_info(enh)
                 if highlight_hue:
-                    out, hinfo = self._hue(out, x, hcfg)
+                    out, hinfo, hmask = self._hue(out, x, hcfg)
                     info["highlight_hue"] = hinfo
+                    if hinfo["applied"]:
+                        steps["mask_highlight_hue"] = np.repeat(hmask[..., None], 3, -1)
                     emit("refined", {"highlight_hue": hinfo})
             elif mode == "quality_guided_hybrid":
                 from lumen.hybrid import QualityGuidedHybrid
@@ -139,10 +141,12 @@ class LumenPipeline:
                     model_out, aux = enh(x)
                     t1 = time.perf_counter()
                     emit("restored", {"ms": round((t1 - t0) * 1000, 1)})
-                    fixed, hinfo = self._hue(model_out, x, hcfg)
+                    fixed, hinfo, hmask = self._hue(model_out, x, hcfg)
                     r = QualityGuidedHybrid(enh, cfg, disable).refine(fixed, x)
                     emit("refined", {**self._qg_progress(r.info), "highlight_hue": hinfo})
                     r.intermediates[f"{enh.name}_map"] = np.repeat(aux[..., None], 3, -1)
+                    if hinfo["applied"]:
+                        r.intermediates["mask_highlight_hue"] = np.repeat(hmask[..., None], 3, -1)
                     r.info["timing_ms"] = {"model": round((t1 - t0) * 1000, 1), "refine": r.info["timing_ms"]["refine"],
                                            "highlight_hue": hinfo["ms"]}
                     out, steps = r.image, r.intermediates
@@ -195,8 +199,8 @@ class LumenPipeline:
         from lumen.hybrid.highlight_hue import highlight_hue_fix
 
         t0 = time.perf_counter()
-        fixed, _, h = highlight_hue_fix(out, x, cfg)
-        return fixed, {**h, "ms": round((time.perf_counter() - t0) * 1000, 1)}
+        fixed, mask, h = highlight_hue_fix(out, x, cfg)
+        return fixed, {**h, "ms": round((time.perf_counter() - t0) * 1000, 1)}, mask
 
     @staticmethod
     def deep_info(enh) -> dict:

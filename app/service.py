@@ -83,6 +83,8 @@ class EnhanceResult:
     metrics: dict = field(default_factory=dict)
     note: str = ""
     info: dict = field(default_factory=dict)
+    # refinements that really changed this photo: name -> (soft mask in [0, 1], shape H x W, mean coverage)
+    masks: dict = field(default_factory=dict)
 
 
 def niqe_available() -> bool:
@@ -182,6 +184,19 @@ class EnhancementService:
                 m["niqe"] = "unavailable" if v is None else round(v, 3)
         return m
 
+    @staticmethod
+    def _applied_masks(info: dict, steps: dict) -> dict:
+        """Masks of the refinements that were actually applied to this photo (highlight colour fix, and the
+        quality-guided noise / highlight / colour / contrast steps), each with its mean coverage."""
+        out = {}
+        hue = info.get("highlight_hue")
+        if hue and hue.get("applied") and "mask_highlight_hue" in steps:
+            out["highlight_hue"] = (steps["mask_highlight_hue"][..., 0], float(hue["coverage"]))
+        for name, d in (info.get("refinements") or {}).items():
+            if d.get("active") and f"mask_{name}" in steps:
+                out[name] = (steps[f"mask_{name}"][..., 0], float(d["coverage"]))
+        return out
+
     def _result(self, mode, label, r, compute_niqe, latency_ms=None, timing=None, note="") -> EnhanceResult:
         info = r.info if hasattr(r, "info") else {}
         out = r.output if hasattr(r, "output") else r.image
@@ -197,6 +212,7 @@ class EnhancementService:
             res.refinements, res.identity = info["refinements"], info["identity"]
             res.applied, res.configured = info["applied"], info.get("configured")
             res.qg_config = info.get("qg_config", self.pipe.qg_config_source)
+        res.masks = self._applied_masks(info, getattr(r, "intermediates", None) or {})
         if mode == CLASSICAL:
             p = classical_config_path()
             res.checkpoint = None
@@ -244,6 +260,8 @@ class EnhancementService:
                               qg_config=self.pipe.qg_config_source)
                 if "highlight_hue" in std.info:
                     q.info["highlight_hue"] = std.info["highlight_hue"]
+                if "mask_highlight_hue" in std.intermediates:
+                    q.intermediates["mask_highlight_hue"] = std.intermediates["mask_highlight_hue"]
                 total = std.latency_ms + refine_ms
                 results.append(self._result(
                     QUALITY_GUIDED, MODE_LABELS[QUALITY_GUIDED], q, compute_niqe, latency_ms=total,
