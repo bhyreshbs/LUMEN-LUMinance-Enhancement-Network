@@ -76,25 +76,26 @@ val_real 10/10, the 20 real phone photos 20/20, syn_clean 100/100, and the 41 lo
 - **It only acts on very noisy inputs.** Most phone photos are already denoised in the camera (our 20 measure at most
   0.0043) and are not touched. Two of the four app examples (coffee 0.021, rocket 0.028) sit below the gate.
 - **Real-noise evidence is one capture setup** (LOL-v2-real). No other real noisy pairs were available.
-- **Latency:** about +30 % on very noisy photos (section 6).
+- **Latency:** about +0.25-0.45 s (+13-15 %) on very noisy photos only, in the production container (section 6).
 
 ## 6. Latency
 
 Only very noisy photos pay anything; every other photo skips the step (the gate check costs one noise estimate of the
 input, a few milliseconds).
 
-Measured through the app on the development laptop, **CPU only, process pinned to 2 logical cores**, ONNX engine,
-768 px cap, best of 3 (`/api/restore`):
+**Production container** (the Cloud Run image built from this branch, `docker run --cpus 2 --memory 4g`, ONNX engine,
+768 px cap, weights mounted read-only; `/api/restore`, best of 3, server-side timings):
 
 | Photo | Model step | Noise reduction | Share of the total |
 |---|---|---|---|
-| very noisy real photo, 600x400 | 5.4 s | **+1.7 s** | about +31 % |
-| the same, mirror-padded to 768x512 (deployed size) | 8.8 s | **+2.5 s** | about +28 % |
-| low-noise photo (eval15 #179) | 5.6 s | 0 (skipped) | - |
+| very noisy real photo, 600x400 | 1.65 s | **+0.24 s** | about +13 % |
+| the same, mirror-padded to 768x512 (deployed size) | 2.85 s | **+0.45 s** | about +15 % |
+| low-noise photo (eval15 #179) | 1.71 s | 0 (skipped) | - |
 
-Two pinned logical cores are slower than Cloud Run's 2 vCPU (where the model takes 1.6-3.3 s), so on the deployed
-service the step should add roughly +30 % on very noisy photos only. A faster NLM window (5/15) roughly halves the cost
-on dev data at some loss in LPIPS, but it was **not** the frozen setting and was not validated.
+The full smoke test passed in that container (all styles, compare-all reuses one network run). For comparison, on the
+Windows development laptop with the process pinned to 2 logical cores the step cost +1.7 s (600x400) and +2.5 s (768 px):
+OpenCV's NLM is much faster in the Linux container. A faster NLM window (5/15) was **not** the frozen setting and was not
+validated.
 
 ## 7. Reproduce
 
