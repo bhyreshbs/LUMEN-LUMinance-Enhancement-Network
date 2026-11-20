@@ -76,6 +76,13 @@
     <!-- Workspace: the photo on the darkroom, the few controls needed beside it -->
     <section class="work" id="viewWorkspace" aria-label="Restoration workspace" hidden>
       <h1 class="sr-only">Restore your photo</h1>
+      <div class="work__nav">
+        <button class="back" id="backBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg>
+          <span id="backLabel">Back</span>
+        </button>
+        <p class="work__step" id="stepLabel" aria-live="polite"></p>
+      </div>
       <div class="work__main">
         <div class="darkroom">
           <div class="darkroom__top" id="vtools" hidden>

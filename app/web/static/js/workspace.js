@@ -14,6 +14,7 @@ const els = {
   viewer: $("viewer"), imgAfter: $("imgAfter"), imgBefore: $("imgBefore"), handle: $("handle"),
   overlay: $("overlay"), elapsed: $("elapsed"), overlayTitle: $("overlayTitle"),
   fileThumb: $("fileThumb"), fileName: $("fileName"), fileMeta: $("fileMeta"), changeBtn: $("changeBtn"),
+  backBtn: $("backBtn"), backLabel: $("backLabel"), stepLabel: $("stepLabel"),
   styles: $("styles"), restoreBtn: $("restoreBtn"), restoreLabel: $("restoreLabel"), cancelBtn: $("cancelBtn"),
   result: $("result"), successText: $("successText"), downloadBtn: $("downloadBtn"), resultMeta: $("resultMeta"),
   alert: $("alert"), alertTitle: $("alertTitle"), alertText: $("alertText"), alertActions: $("alertActions"),
@@ -72,6 +73,64 @@ function setState(s) {
   els.sideBtn.disabled = working;
   els.closerBtn.disabled = working;
   for (const b of els.modes.querySelectorAll("button")) b.disabled = working;
+  // where you are, and where Back goes: result -> choosing a style -> the start page (Cancel covers "working")
+  const [step, what] = STEPS[s] || ["", ""];
+  els.stepLabel.textContent = step ? `${step} · ${what}` : "";
+  els.backBtn.hidden = working;
+  const toStyles = s === "done";
+  els.backLabel.textContent = toStyles ? "Back to styles" : "Back to start";
+  els.backBtn.title = toStyles ? "Back to choosing a style for this photo" : "Back to the start page";
+}
+const STEPS = {
+  ready: ["Step 2 of 3", "Choose a style, then restore"],
+  working: ["Step 2 of 3", "Restoring your photo"],
+  error: ["Step 2 of 3", "Something needs your attention"],
+  done: ["Step 3 of 3", "Your restored photo"],
+};
+
+// ------------------------------------------------------------------ going back
+// Back from a result: the same photo, ready to pick another style. Finished results stay, so picking a style that
+// was already restored shows it again instantly.
+function backToStyles() {
+  state.shown = null;
+  resetInspection();
+  els.imgAfter.src = state.fileUrl;
+  els.imgAfter.alt = "Your original photo";
+  els.viewer.classList.remove("is-compare");
+  els.result.hidden = true;
+  els.report.hidden = true;
+  els.steps.hidden = true;
+  els.compareHint.hidden = true;
+  els.restoreBtn.hidden = false;
+  els.restoreLabel.textContent = state.results.has(state.style) ? `Show the ${styleName(state.style)} result` : "Restore photo";
+  hideAlert();
+  setState("ready");
+  updateHint();
+  els.restoreBtn.focus({ preventScroll: true });
+  announce("Back to choosing a style. Your photo is still loaded.");
+}
+
+// Back to the start page. Uses the browser history when we added the workspace entry, so the browser's (or phone's)
+// Back button and this one always agree.
+function goStart() {
+  if (history.state && history.state.lumen === "workspace") history.back();
+  else showStart();
+}
+function showStart() {
+  if (state.controller) state.controller.abort();
+  hideAlert();
+  setState("empty");
+  window.scrollTo({ top: 0 });
+  els.dropzone.focus({ preventScroll: true });
+  announce("Back at the start. Choose a photo to restore.");
+}
+function onHistory(e) {
+  const step = e.state && e.state.lumen;
+  if (step === "workspace" && state.file) {
+    if (els.main.dataset.state === "empty") setState(state.shown ? "done" : "ready");
+  } else if (els.main.dataset.state !== "empty") {
+    showStart();
+  }
 }
 
 function showAlert(title, text, actions = []) {
@@ -140,6 +199,8 @@ function onStyleChange() {
     els.result.hidden = true;
     els.restoreBtn.hidden = false;
     els.restoreLabel.textContent = `Restore with ${styleName(state.style)}`;
+  } else {
+    els.restoreLabel.textContent = "Restore photo";
   }
 }
 
@@ -474,6 +535,8 @@ function selectFile(file) {
     return;
   }
   els.notice.hidden = true;
+  // entering the workspace from the start page adds one history entry: the browser's Back returns to the start page
+  if (els.main.dataset.state === "empty") history.pushState({ lumen: "workspace" }, "");
   if (state.controller) state.controller.abort();
   if (state.fileUrl) URL.revokeObjectURL(state.fileUrl);
   state.file = file;
@@ -958,7 +1021,10 @@ async function compareStyles() {
 }
 
 function handleFailure(err, retryFn, cancelledMessage) {
-  if (err.name === "AbortError") { setState(state.shown ? "done" : "ready"); announce(cancelledMessage); return; }
+  if (err.name === "AbortError") {
+    if (els.main.dataset.state === "empty") return;     // cancelled by going back to the start page: stay there
+    setState(state.shown ? "done" : "ready"); announce(cancelledMessage); return;
+  }
   setState("error");
   const retry = ["Try again", retryFn, true];
   const another = ["Choose another photo", () => els.fileInput.click()];
@@ -980,6 +1046,8 @@ function handleFailure(err, retryFn, cancelledMessage) {
 // ------------------------------------------------------------------ restoring
 async function restore() {
   if (!state.file || !state.style) return;
+  const cached = state.results.get(state.style);       // already restored with this style (e.g. after Back)
+  if (cached) { showResult(cached); return; }
   hideAlert();
   setState("working");
   const started = performance.now();
@@ -1074,6 +1142,9 @@ async function boot() {
   initShell();
   initViewerInput();
   setState("empty");
+  history.replaceState({ lumen: "start" }, "");
+  window.addEventListener("popstate", onHistory);
+  els.backBtn.addEventListener("click", () => (els.main.dataset.state === "done" ? backToStyles() : goStart()));
   initLanding().catch(() => {});
   els.imgAfter.addEventListener("load", () => showPreview(true));
   els.imgAfter.addEventListener("error", () => { if (!state.shown) showPreview(false); });

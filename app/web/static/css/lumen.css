@@ -622,6 +622,32 @@ tr.is-best th, tr.is-best td { color: var(--light-text); }
   .maps-grid { grid-template-columns: 1fr; }
   .lab select, .lab input[type=file] { width: 100%; }
 }
+/* ================================================================== back buttons */
+.back { display: inline-flex; align-items: center; gap: 6px; width: fit-content; justify-self: start; min-height: 40px;
+        padding: 0 16px 0 11px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface);
+        color: var(--ink-2); font: 500 14px/1 var(--sans); text-decoration: none; cursor: pointer;
+        transition: color var(--t-micro), border-color var(--t-micro), background var(--t-micro); }
+.back svg { width: 18px; height: 18px; flex: none; transition: transform var(--t-ui) var(--ease-exposure); }
+.back:hover { color: var(--ink); border-color: var(--ink-3); background: var(--surface-2); }
+.back:hover svg { transform: translateX(-3px); }
+.back:active { transform: translateY(1px); }
+.work__nav { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s3) var(--s4); flex-wrap: wrap; }
+.work__step { margin: 0; color: var(--ink-3); font-size: 14px; }
+.doc__body .back { margin-bottom: var(--s3); }
+
+/* ================================================================== theme switch */
+/* The new theme spreads from the theme button as a growing circle (shell.js drives the clip-path); no cross-fade. */
+:root.vt-theme::view-transition-old(root), :root.vt-theme::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+:root.vt-theme::view-transition-old(root) { z-index: 1; }
+:root.vt-theme::view-transition-new(root) { z-index: 2; }
+/* fallback for browsers without View Transitions: a short colour cross-fade over the whole page */
+.theme-fade, .theme-fade *, .theme-fade *::before, .theme-fade *::after {
+  transition: background-color 260ms ease, color 260ms ease, border-color 260ms ease, fill 260ms ease, stroke 260ms ease,
+              box-shadow 260ms ease !important; }
+/* the sun / moon icon turns in as it appears */
+@keyframes icon-in { from { transform: rotate(-80deg) scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
+:root.theme-switched #themeBtn svg { animation: icon-in 380ms var(--ease-exposure); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
   .flow .spark, .flowline::after { display: none; }
