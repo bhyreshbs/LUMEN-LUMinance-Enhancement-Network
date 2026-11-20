@@ -11,11 +11,13 @@
   at 768 px with 2 CPUs, so 4 GiB leaves >= 1.4 GiB headroom):
     2 vCPU, 4 GiB, concurrency 1, min 0 / max 2 instances, 300 s timeout, startup CPU boost, x86_64 Linux.
 
-  -Public makes the service reachable without sign-in (needed for a public demo URL). Without it the service
-  requires IAM authentication.
+  The service is PUBLIC by default (reachable without sign-in, needed for the demo URL). Every deploy sets the
+  access explicitly, so a deploy can never silently remove public access. Pass -Private to require IAM
+  authentication instead. -Public is still accepted (it is now the default).
 
 .EXAMPLE
-  .\deploy\cloudrun\deploy.ps1 -ProjectId my-project-id -Public
+  .\deploy\cloudrun\deploy.ps1 -ProjectId my-project-id            # public demo
+  .\deploy\cloudrun\deploy.ps1 -ProjectId my-project-id -Private     # sign-in required
 #>
 param(
     [Parameter(Mandatory = $true)][string]$ProjectId,
@@ -25,9 +27,12 @@ param(
     [string]$Tag = "",
     [int]$Concurrency = 1,
     [int]$MaxInstances = 2,
-    [switch]$Public
+    [switch]$Public,    # accepted for backward compatibility; public is the default
+    [switch]$Private
 )
 $ErrorActionPreference = "Stop"
+if ($Public -and $Private) { throw "-Public and -Private are mutually exclusive" }
+$Public = -not $Private
 if (-not $Bucket) { $Bucket = "$ProjectId-lumen-weights" }
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 if (-not $Tag) {

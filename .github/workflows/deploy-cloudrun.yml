@@ -6,7 +6,7 @@
 #
 # Triggers: a push to the `deploy` branch (release by `git push origin main:deploy`), or "Run workflow" manually.
 # Pushes to `main` do NOT deploy.
-# Public access (--allow-unauthenticated) is granted once by the first manual deploy (deploy.ps1 -Public);
+# Public access (--allow-unauthenticated) is granted by manual deploys (deploy.ps1 is public by default);
 # the deployer here only has roles/run.developer, so it cannot change who may call the service.
 name: Deploy to Cloud Run
 

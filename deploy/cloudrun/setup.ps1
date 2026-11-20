@@ -110,7 +110,7 @@ if (-not $SkipGitHub) {
 
 Write-Host ""
 Write-Host "Setup complete. Nothing has been deployed yet." -ForegroundColor Green
-Write-Host "Manual deploy:  .\deploy\cloudrun\deploy.ps1 -ProjectId $ProjectId -Public"
+Write-Host "Manual deploy:  .\deploy\cloudrun\deploy.ps1 -ProjectId $ProjectId"
 if (-not $SkipGitHub) {
     Write-Host ""
     Write-Host "For GitHub Actions, add these as repository *variables* (Settings > Secrets and variables > Actions > Variables):"

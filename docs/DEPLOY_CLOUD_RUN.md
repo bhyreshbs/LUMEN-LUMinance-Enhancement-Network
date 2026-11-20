@@ -85,8 +85,8 @@ cd LUMEN-LUMinance-Enhancement-Network
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\deploy\cloudrun\setup.ps1 -ProjectId <your-project-id>
 
-# 6. Build with Cloud Build, then deploy. -Public = open URL for the demo; omit it to require sign-in.
-.\deploy\cloudrun\deploy.ps1 -ProjectId <your-project-id> -Public
+# 6. Build with Cloud Build, then deploy. The URL is public by default; add -Private to require sign-in.
+.\deploy\cloudrun\deploy.ps1 -ProjectId <your-project-id>
 
 # 7. Verify the live service end to end (all 3 styles x 4 examples, Compare All, invalid uploads)
 python scripts\smoke_test_app.py --url https://<service-url> --expect-modes standard quality_guided classical
@@ -106,7 +106,7 @@ Re-deploy after code changes: run step 6 again. Each deploy is tagged with the c
 | | `roles/run.developer` (project) | deploy new revisions; **cannot** change who may invoke the service |
 | | `roles/iam.serviceAccountUser` on **`lumen-run@` only** | deploy revisions that run as `lumen-run` |
 | GitHub OIDC (WIF pool `github`, provider `github-oidc`) | `roles/iam.workloadIdentityUser` on `lumen-deployer@`, restricted by an attribute condition to `bhyreshbs/LUMEN-LUMinance-Enhancement-Network` | keyless login from that repository only |
-| You (manual path) | Owner/Editor for setup; deploying needs `run.admin` for `-Public` | one-time public access, Cloud Build submission |
+| You (manual path) | Owner/Editor for setup; deploying needs `run.admin` to set public access | one-time public access, Cloud Build submission |
 
 No service-account keys are created, and no credentials are stored in the repository or in GitHub.
 
@@ -119,7 +119,7 @@ deploys it with the same settings. It then reports the URL, `/healthz` and style
 2. In GitHub, open **Settings -> Secrets and variables -> Actions -> Variables** and add `GCP_PROJECT_ID`,
    `GCP_REGION`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SA`, `GCP_RUN_SA` and `GCP_WEIGHTS_BUCKET`. They are
    identifiers, not secrets.
-3. Do the first deploy manually with `-Public`; the deployer role cannot grant public access.
+3. Do the first deploy manually (public by default); the deployer role cannot grant public access.
 4. Release with `git push origin main:deploy`, or start **Actions -> Deploy to Cloud Run -> Run workflow**.
    Pushes to `main` do not deploy. Until `GCP_PROJECT_ID` is set, the workflow is skipped.
 
@@ -151,8 +151,8 @@ falls back to PyTorch. `/api/status` reports `technical.engine` (`onnx` or `torc
 Measured on the live service, same images before and after (model step, 2 vCPU): 2743 -> 1585 ms, 5923 -> 2842 ms,
 6958 -> 3260 ms (1.7-2.1x). On the laptop at 2 threads over eval15: 1.51-1.53x, with identical PSNR/SSIM/LPIPS.
 
-**Access:** `deploy.ps1` without `-Public` *removes* public access (`--no-allow-unauthenticated`). Pass `-Public` on
-every deploy of the demo service, or the URL returns 403.
+**Access:** `deploy.ps1` is public by default and sets access on every run; `-Private` requires sign-in. (An earlier
+version defaulted to private, so a plain redeploy silently removed public access and the URL returned 403.)
 
 **Cold start / min-instances:** not measured. `--min-instances 0` is kept (no idle cost); the first request after
 idle also pays container start and checkpoint load. Use `--min-instances 1` only if that wait matters for a live demo.
@@ -169,7 +169,7 @@ Therefore the checkpoint is:
 - held only in a **private** bucket that just the runtime service account can read.
 
 A public Cloud Run URL still lets anyone *use* the model's outputs. Confirm that this is acceptable (hackathon
-organisers, `THIRD_PARTY_NOTICES.md`) before deploying with `-Public`.
+organisers, `THIRD_PARTY_NOTICES.md`) before deploying publicly (the default).
 
 ## Costs (approximate; verify at https://cloud.google.com/run/pricing and the pricing calculator)
 
