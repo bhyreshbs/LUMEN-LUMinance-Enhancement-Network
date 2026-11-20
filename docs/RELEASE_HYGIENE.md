@@ -29,7 +29,7 @@ Scope: the working tree and all 20 commits on all branches.
 | Author identity in git history | all 20 commits carry the owner's personal Gmail address as author. Every clone and the public GitHub page expose it |
 | CI deploy | keyless (Workload Identity Federation); no key is stored in the repository or its settings |
 
-**Decision for the owner:** the author email in history cannot be removed without rewriting history, which changes
+**Decision (owner, 2026-11-20): keep the author email and the GCP project id in the public repository; no history rewrite.** Context: the author email in history cannot be removed without rewriting history, which changes
 every commit hash and breaks anything that cites one (the report cites commits). If the repository goes public and
 that address should not be exposed, the options are (a) accept it, (b) enable GitHub's "keep my email private" for
 future commits only, or (c) rewrite history with `git filter-repo` before publishing. I have not done (c).
@@ -79,7 +79,7 @@ Recommendation: **A now**, move to **B** only after the Zero-DCE++ files are rem
 ## 5. Still open for the owner
 
 1. Choose licence wording (section 3).
-2. Decide whether to keep the author email and project id in a public repository (section 2).
+2. ~~Author email and project id in a public repository~~: decided, keep both (section 2).
 3. Confirm the repository visibility on GitHub; `gh` is not installed here, so I could not read it. The notices file
    says private.
 4. Approve a release tag.
