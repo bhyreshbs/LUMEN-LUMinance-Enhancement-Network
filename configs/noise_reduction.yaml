@@ -1,0 +1,18 @@
+meta:
+  status: candidate (research/noise-reduction branch); frozen BEFORE the held-out test was run
+  selected_on: >-
+    dev only - the TUNE half of the real dev pairs (data/splits/noise_reduction_tune.txt, 142 images, 107 very noisy)
+    and dev_syn (90 synthetic). The TEST half (data/splits/noise_reduction_test.txt) and every validation set were
+    not looked at.
+  objective: lowest mean LPIPS on the very noisy tune images; gates where denoising helped every dev image
+  gate_evidence: >-
+    dev images with input sigma >= 0.03 were helped on LPIPS in 100 % of cases (n = 112); between 0.003 and 0.03 the
+    effect was mixed (about half helped, worst +0.15 LPIPS), so nothing changes below 0.03
+  stage: model -> highlight hue fix -> noise reduction -> (Highlight-safe only) QGH refinement
+  method: OpenCV colour non-local means, h = strength * noise_level(model output) * 255
+params:
+  gate_low: 0.030
+  gate_high: 0.040
+  strength: 0.8
+  template: 7
+  search: 21
