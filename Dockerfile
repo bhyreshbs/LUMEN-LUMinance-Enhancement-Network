@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libglib2.0-0 \
 WORKDIR /app
 COPY requirements.txt requirements-niqe.txt requirements-onnx.txt ./
 RUN pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu \
-    && pip install -r requirements.txt \
+    && pip install -r requirements.txt -r requirements-onnx.txt\
     && if [ "$INSTALL_NIQE" = "1" ]; then \
          pip install -r requirements-niqe.txt --extra-index-url https://download.pytorch.org/whl/cpu; fi
 
