@@ -1,7 +1,6 @@
 # LUMEN UI redesign: design brief
 
-**Status:** approved and implemented (branch `feat/ui-redesign`). The static prototypes used for approval are kept in
-`docs/ui-prototype/` for reference. Decisions on the open questions (section 12): hint at σ ≥ 0.041; landing images regenerated
+**Status:** approved and implemented (branch `feat/ui-redesign`). The static prototypes used for approval were removed once the real UI replaced them; they remain in git history (tag `pre-cleanup-2026-11-20`). Decisions on the open questions (section 12): hint at σ ≥ 0.041; landing images regenerated
 by `scripts/make_landing_assets.py`; the light map travels with every result (under 60 KB) and is drawn only when the drawer opens.
 
 ## 1. Concept: light returning to a dark photograph

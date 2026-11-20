@@ -43,3 +43,7 @@ dist/
 # Local report deliverables (contain dataset images) and Claude Code local state
 submission/
 .claude/
+
+# Local presentation material (deck, script, Q&A) and downloaded slide templates: never part of the repository
+/presentation/
+/*.pptx
