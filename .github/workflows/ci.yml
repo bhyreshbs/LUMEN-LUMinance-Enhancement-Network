@@ -1,0 +1,41 @@
+# Run the test suite on every pull request and on main. No model checkpoint is available here (not redistributable,
+# see weights/README.md), so tests that need one are reported as skips with the reason; everything else must pass.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-onnx.txt
+            requirements-ci.txt
+
+      - name: Install dependencies (CPU PyTorch, pinned)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-ci.txt
+
+      - name: Test (-rs lists every skipped test and why)
+        run: python -m pytest -q -rs

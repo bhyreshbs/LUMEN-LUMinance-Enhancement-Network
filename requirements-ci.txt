@@ -1,0 +1,10 @@
+# What CI installs to run the test suite: runtime + ONNX engine + test tools. Deliberately WITHOUT requirements-niqe.txt
+# (pyiqa is PolyForm-Noncommercial and heavy) and without export/training extras. Install torch first (see requirements.txt).
+-r requirements.txt
+-r requirements-onnx.txt
+lpips==0.1.4
+tqdm==4.70.1
+psutil==7.2.2
+optuna==5.0.0
+pytest==9.2.0
+httpx==0.28.1

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from dataclasses import replace
@@ -279,7 +280,7 @@ def figures(args):
         write_image(fig / f"{name}_{it['id']}.png", v1._panel(ims, names).astype(np.float32) / 255)
         print("wrote", fig / f"{name}_{it['id']}.png")
     # the user's photo (no ground truth) if present
-    up = Path(r"C:\Users\Bhyresh BS\Music\test\bad-lighting.webp")
+    up = Path(os.environ.get("LUMEN_USER_PHOTO", "data/user_photo/bad-lighting.webp"))
     if up.exists():
         x = limit_size(read_image(up), 768); p = {"x": x, "gt": None, "r": enh(x)[0]}
         write_image(fig / "user_bad_lighting.png", v1._panel([x, ms["standard"](p), ms["qgh+hue"](p)], ["Input", "Natural", "Highlight-safe + hue fix"]).astype(np.float32) / 255)

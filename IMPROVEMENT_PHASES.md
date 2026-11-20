@@ -18,7 +18,7 @@ built on them and nothing is added to Natural, Highlight-safe or Quick.
 ## Rules for every prompt (paste this block first in each session)
 
 ```
-Project: LUMEN (C:\Users\Bhyresh BS\Documents\dev\LUMEN), team T66, P1 low-light restoration.
+Project: LUMEN (this repository), team T66, P1 low-light restoration.
 Rules for this session:
 1. Read docs/DESIGN.md, docs/ARCHITECTURE.md and eval_P1_T66.md before changing anything.
 2. LOL-v1 eval15 is a frozen test set: never tune, calibrate or select on it. Headline numbers stay as in

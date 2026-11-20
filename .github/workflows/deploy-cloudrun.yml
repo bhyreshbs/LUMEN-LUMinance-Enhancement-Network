@@ -53,7 +53,7 @@ jobs:
             --execution-environment gen2 --cpu 2 --memory 4Gi --cpu-boost \
             --concurrency 1 --min-instances 0 --max-instances 2 --timeout 300 --port 8080 \
             --service-account "${{ vars.GCP_RUN_SA }}" \
-            --set-env-vars "LUMEN_TORCH_THREADS=2,LUMEN_MAX_SIDE=768,LUMEN_RETINEXFORMER_WEIGHTS=/models/retinexformer_LOL_v1.pth" \
+            --set-env-vars "LUMEN_TORCH_THREADS=2,LUMEN_MAX_SIDE=768,LUMEN_ENGINE=onnx,LUMEN_RETINEXFORMER_WEIGHTS=/models/retinexformer_LOL_v1.pth" \
             --add-volume "name=models,type=cloud-storage,bucket=${{ vars.GCP_WEIGHTS_BUCKET }},readonly=true" \
             --add-volume-mount "volume=models,mount-path=/models"
 
