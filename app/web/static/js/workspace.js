@@ -144,9 +144,11 @@ function onStyleChange() {
 }
 
 // The noisy-photo hint appears only for inputs inside the evidence range (very grainy), and only where it would change something.
+// With noise reduction on, both neural styles remove heavy grain the same way, so the hint has nothing to add.
 function updateHint() {
   const hs = state.status?.styles.find((s) => s.id === "quality_guided");
-  els.noiseHint.hidden = !(state.grainy && hs && hs.available && state.style !== "quality_guided");
+  const nr = state.status?.technical?.noise_reduction?.enabled;
+  els.noiseHint.hidden = !(state.grainy && !nr && hs && hs.available && state.style !== "quality_guided");
 }
 
 // ------------------------------------------------------------------ fitting the photo to the stage
@@ -523,7 +525,8 @@ const LIGHTING = { extremely_dark: "Very dark", non_uniform: "Unevenly lit", low
 const grainWord = (sigma) => (sigma >= GRAINY ? "heavy grain" : sigma >= SOME_GRAIN ? "some grain" : "little grain");
 const stepName = (stage, style) => ({
   decoded: "Read", analysed: "Measured the light", restored: "Restored",
-  refined: style === "quality_guided" ? "Final touches" : "Checked bright areas",
+  refined: style === "quality_guided" ? "Final touches"
+    : state.status?.technical?.noise_reduction?.enabled ? "Checked bright areas and grain" : "Checked bright areas",
 }[stage]);
 
 function stepCaption(stage, d) {
@@ -540,6 +543,7 @@ function stepCaption(stage, d) {
   if (stage === "refined") {
     const did = [];
     if (d.highlight_hue && d.highlight_hue.applied) did.push("kept the colour of bright spots");
+    if (d.noise_reduction && d.noise_reduction.applied) did.push(d.noise_reduction.weight >= 1 ? "removed heavy grain" : "reduced grain");
     const applied = d.applied || [];
     if (applied.includes("highlight")) did.push("softened near-white areas");
     if (applied.includes("noise")) did.push("reduced grain");
@@ -626,12 +630,17 @@ function buildReport(run, data) {
     const hue = r.highlight_hue;
     const found = r.refinements || {};
     const applied = r.applied || [];
+    const nr = r.noise_reduction;
     if (hue && hue.applied) out.push(`Bright spots such as windows or lamps kept their original colour (${share(hue.coverage)} of the photo).`);
+    if (nr && nr.applied) {
+      out.push(nr.weight >= 1 ? "The photo was very grainy, so heavy grain was removed across the whole photo; very fine texture can look smoother."
+                              : `The photo was quite grainy, so grain was partly removed (${Math.round(nr.weight * 100)}% strength).`);
+    }
     if (applied.includes("highlight")) out.push(`Near-white areas were softened so they don't wash out (${share(found.highlight.coverage)} of the photo).`);
     if (applied.includes("noise")) out.push(`Grain in smooth areas was reduced (${share(found.noise.coverage)} of the photo).`);
     if (applied.includes("colour")) out.push(`Colours were nudged back towards the original (${share(found.colour.coverage)} of the photo).`);
     if (applied.includes("contrast")) out.push(`Flattened detail was sharpened (${share(found.contrast.coverage)} of the photo).`);
-    if (r.identity === true && !(hue && hue.applied)) out.push("Nothing else needed fixing.");
+    if (r.identity === true && !(hue && hue.applied) && !(nr && nr.applied)) out.push("Nothing else needed fixing.");
     else if (r.refinements === undefined && hue && !hue.applied) out.push("No bright areas needed their colour protected.");
   }
   return out.join(" ");
@@ -669,8 +678,9 @@ function showReport(data) {
   if (m && typeof m.overexposed_percent === "number") {
     list.push(chip("blown out after", `${m.overexposed_percent.toFixed(2)}%`, m.overexposed_percent < 0.5 ? "ok" : "warn"));
   }
-  const ms = run && run.events.restored ? run.events.restored.ms : null;
-  if (ms !== null) list.push(chip("", `Restored in ${seconds(ms)}`, "light"));
+  // the whole restoration (model plus every refinement, e.g. noise reduction), not just the model stage
+  const ms = typeof data.elapsed_ms === "number" ? data.elapsed_ms : run && run.events.restored ? run.events.restored.ms : null;
+  if (ms !== null) list.push(chip("", `Done in ${seconds(ms)}`, "light"));
   els.chips.replaceChildren(...list);
   els.chips.hidden = list.length === 0;
   const text = data.reportText || "";

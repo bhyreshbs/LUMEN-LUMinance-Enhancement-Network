@@ -87,11 +87,18 @@ def test_natural_reports_the_highlight_colour_step_and_quick_does_not(fake):
     assert "refined" not in dict(parse_sse(stream(client(), "classical").text))
 
 
-def test_no_refined_step_when_the_highlight_fix_is_switched_off(fake, monkeypatch):
+def test_no_refined_step_when_the_highlight_fix_and_noise_reduction_are_switched_off(fake, monkeypatch):
     monkeypatch.setenv("LUMEN_HIGHLIGHT_HUE", "0")
+    monkeypatch.setenv("LUMEN_NOISE_REDUCTION", "0")
     ev = parse_sse(stream(client(), "standard").text)
     assert names(ev) == ["decoded", "analysed", "restored", "done"]
     assert ev[0][1]["plan"] == ["decoded", "analysed", "restored"]
+
+
+def test_noise_reduction_alone_still_reports_a_refined_step(fake, monkeypatch):
+    monkeypatch.setenv("LUMEN_HIGHLIGHT_HUE", "0")
+    nat = dict(parse_sse(stream(client(), "standard").text))
+    assert "noise_reduction" in nat["refined"] and "highlight_hue" not in nat["refined"]
 
 
 # ------------------------------------------------------------------------------------------- result unchanged

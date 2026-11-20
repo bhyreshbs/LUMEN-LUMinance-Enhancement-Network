@@ -43,6 +43,7 @@ class LumenPipeline:
         self.qg_config = qg_config
         self.qg_config_source = "explicit" if qg_config is not None else None
         self.hue_config = None  # HighlightHueConfig, loaded lazily on first use (highlight_hue=True)
+        self.nr_config = None   # NoiseReductionConfig, loaded lazily on first use (noise_reduction=True)
 
     def get_deep(self, name: str | None = None):
         """Cached DeepEnhancer per registry name ("zerodce" | "retinexformer")."""
@@ -75,21 +76,36 @@ class LumenPipeline:
             self.hue_config = load_hue_config()
         return self.hue_config
 
+    def get_nr_config(self):
+        """The noise reduction config, loaded and validated once (raises NoiseReductionConfigError)."""
+        if self.nr_config is None:
+            from lumen.hybrid.noise_reduction import load_nr_config
+
+            self.nr_config = load_nr_config()
+        return self.nr_config
+
     def validate(self, img) -> np.ndarray:
         """Validated float32 RGB image (no resizing). Raises ImageValidationError (a ValueError)."""
         return prepare_array(img, 0, self.max_pixels)
 
     def run(self, img, mode: str = "hybrid", disable: set[str] | None = None,
-            deep_model: str | None = None, highlight_hue: bool = False, progress=None) -> PipelineResult:
+            deep_model: str | None = None, highlight_hue: bool = False, noise_reduction: bool = False,
+            progress=None) -> PipelineResult:
         """`highlight_hue=True` (modes "deep" and "quality_guided_hybrid" only) restores the colour of near-clipped
         input regions after the model, before QGH's highlight roll-off. Off by default, so the research and
         evaluation paths reproduce the frozen results exactly.
+
+        `noise_reduction=True` (same modes) denoises the model output when, and only when, the INPUT is very noisy
+        (lumen/hybrid/noise_reduction.py). Order: model -> hue fix -> noise reduction -> QGH. Off by default; below
+        its gate the output is bit-identical to running without it.
 
         `progress(stage, data)` is an optional observer, called at real stage boundaries ("decoded", "analysed",
         "restored", "refined"). It only reads: the output is identical with or without it, and an exception raised
         by the observer is logged and ignored. The extra image analysis is computed only when it is given."""
         if highlight_hue and mode not in ("deep", "quality_guided_hybrid"):
             raise ValueError("highlight_hue applies to the deep and quality_guided_hybrid modes only")
+        if noise_reduction and mode not in ("deep", "quality_guided_hybrid"):
+            raise ValueError("noise_reduction applies to the deep and quality_guided_hybrid modes only")
         if mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}")
         x = prepare_array(img, self.max_side, self.max_pixels)  # validates, then resizes before float
@@ -111,46 +127,61 @@ class LumenPipeline:
                 info = {"stats": r.stats.as_dict(), "params": r.params.as_dict()}
             elif mode == "deep":
                 hcfg = self.get_hue_config() if highlight_hue else None  # before the model call, like the QGH config
+                ncfg = self.get_nr_config() if noise_reduction else None
                 enh = self.get_deep(deep_model)
                 t_m = time.perf_counter()
                 out, aux = enh(x)
                 emit("restored", {"ms": round((time.perf_counter() - t_m) * 1000, 1)})
                 steps = {f"{enh.name}_map": np.repeat(aux[..., None], 3, -1)}
                 info = self.deep_info(enh)
+                refined = {}
                 if highlight_hue:
                     out, hinfo, hmask = self._hue(out, x, hcfg)
-                    info["highlight_hue"] = hinfo
+                    info["highlight_hue"] = refined["highlight_hue"] = hinfo
                     if hinfo["applied"]:
                         steps["mask_highlight_hue"] = np.repeat(hmask[..., None], 3, -1)
-                    emit("refined", {"highlight_hue": hinfo})
+                if noise_reduction:
+                    out, ninfo = self._nr(out, x, ncfg)
+                    info["noise_reduction"] = refined["noise_reduction"] = ninfo
+                if refined:
+                    emit("refined", refined)
             elif mode == "quality_guided_hybrid":
                 from lumen.hybrid import QualityGuidedHybrid
 
                 cfg = self.get_qg_config()  # before the model call: a bad config must not cost inference
                 hcfg = self.get_hue_config() if highlight_hue else None
+                ncfg = self.get_nr_config() if noise_reduction else None
                 enh = self.get_deep(deep_model or QG_DEFAULT_MODEL)
-                if not highlight_hue:
+                if not (highlight_hue or noise_reduction):
                     on_model = (lambda ms: emit("restored", {"ms": ms})) if progress is not None else None
                     r = QualityGuidedHybrid(enh, cfg, disable)(x, on_model=on_model)
                     emit("refined", self._qg_progress(r.info))
                     out, steps = r.image, r.intermediates
                     info = {**r.info, **self.deep_info(enh), "qg_config": self.qg_config_source}
                 else:
-                    # hue fix on the model output, THEN QGH (its highlight roll-off still runs afterwards)
+                    # hue fix and/or noise reduction on the model output, THEN QGH (its highlight roll-off still runs)
                     t0 = time.perf_counter()
                     model_out, aux = enh(x)
                     t1 = time.perf_counter()
                     emit("restored", {"ms": round((t1 - t0) * 1000, 1)})
-                    fixed, hinfo, hmask = self._hue(model_out, x, hcfg)
+                    fixed, extra, timing, hmask = model_out, {}, {}, None
+                    if highlight_hue:
+                        fixed, hinfo, hmask = self._hue(fixed, x, hcfg)
+                        extra["highlight_hue"], timing["highlight_hue"] = hinfo, hinfo["ms"]
+                    if noise_reduction:
+                        fixed, ninfo = self._nr(fixed, x, ncfg)
+                        extra["noise_reduction"] = ninfo
+                        if ninfo["applied"]:
+                            timing["noise_reduction"] = ninfo["ms"]
                     r = QualityGuidedHybrid(enh, cfg, disable).refine(fixed, x)
-                    emit("refined", {**self._qg_progress(r.info), "highlight_hue": hinfo})
+                    emit("refined", {**self._qg_progress(r.info), **extra})
                     r.intermediates[f"{enh.name}_map"] = np.repeat(aux[..., None], 3, -1)
-                    if hinfo["applied"]:
+                    if hmask is not None and extra["highlight_hue"]["applied"]:
                         r.intermediates["mask_highlight_hue"] = np.repeat(hmask[..., None], 3, -1)
                     r.info["timing_ms"] = {"model": round((t1 - t0) * 1000, 1), "refine": r.info["timing_ms"]["refine"],
-                                           "highlight_hue": hinfo["ms"]}
+                                           **timing}
                     out, steps = r.image, r.intermediates
-                    info = {**r.info, **self.deep_info(enh), "qg_config": self.qg_config_source, "highlight_hue": hinfo}
+                    info = {**r.info, **self.deep_info(enh), "qg_config": self.qg_config_source, **extra}
             else:
                 from lumen.hybrid import HybridEnhancer
 
@@ -193,6 +224,14 @@ class LumenPipeline:
     def _qg_progress(info: dict) -> dict:
         return {"applied": list(info["applied"]), "identity": bool(info["identity"]),
                 "refinements": info["refinements"]}
+
+    @staticmethod
+    def _nr(out, x, cfg):
+        """Noise reduction, gated on the INPUT's noise (the same estimate the app reports as 'grain')."""
+        from lumen.hybrid.noise_reduction import reduce_noise
+        from lumen.metrics.quality import noise_level
+
+        return reduce_noise(out, noise_level(x), cfg)
 
     @staticmethod
     def _hue(out, x, cfg):
