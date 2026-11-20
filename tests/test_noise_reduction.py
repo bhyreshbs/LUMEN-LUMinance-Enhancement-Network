@@ -79,6 +79,32 @@ def test_above_the_gate_noise_is_removed_and_the_ramp_blends():
     np.testing.assert_allclose(half, (1 - hinfo["weight"]) * r + hinfo["weight"] * full, atol=1e-5)
 
 
+def test_production_config_floor_moderate_band_and_heavy_band():
+    cfg = load_nr_config()
+    assert cfg.moderate and 0 < cfg.floor < cfg.gate_low
+    clean = np.clip(dark() * 4, 0, 1)
+    rng = np.random.default_rng(2)
+    r = np.clip(clean + rng.normal(0, 0.035, clean.shape), 0, 1).astype(np.float32)
+    for sigma in (0.0, 0.0043, 0.0068, cfg.floor - 1e-4):   # eval15 max 0.0068, phone photos max 0.0043
+        out, info = reduce_noise(r, sigma, cfg)
+        assert out is r and not info["applied"]
+    mod, info = reduce_noise(r, 0.02, cfg)                     # moderate grain: the detail-protecting filter
+    assert info["applied"] and info["level"] == "moderate" and info["weight"] == 0
+    assert np.abs(mod - clean).mean() < np.abs(r - clean).mean()
+    heavy, hinfo = reduce_noise(r, 0.05, cfg)                  # heavy grain: exactly the iteration-1 filter
+    assert hinfo["level"] == "heavy" and np.array_equal(heavy, reduce_noise(r, 0.05, NoiseReductionConfig())[0])
+
+
+def test_moderate_block_is_validated(tmp_path):
+    p = tmp_path / "nr.yaml"
+    p.write_text("params: {moderate_low: 0.05, moderate_high: 0.06}\nmoderate: {luma_k: 2.0}\n")   # above gate_low
+    with pytest.raises(NoiseReductionConfigError):
+        load_nr_config(p)
+    p.write_text("params: {moderate_low: 0.01, moderate_high: 0.014}\nmoderate: {not_a_key: 1}\n")
+    with pytest.raises(NoiseReductionConfigError):
+        load_nr_config(p)
+
+
 # ----------------------------------------------------------------------------- pipeline
 def test_pipeline_flag_is_off_by_default_and_never_touches_quick(fake):
     pipe = LumenPipeline(max_side=256, deep_model="retinexformer")

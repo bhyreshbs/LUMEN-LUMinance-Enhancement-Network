@@ -543,7 +543,7 @@ function stepCaption(stage, d) {
   if (stage === "refined") {
     const did = [];
     if (d.highlight_hue && d.highlight_hue.applied) did.push("kept the colour of bright spots");
-    if (d.noise_reduction && d.noise_reduction.applied) did.push(d.noise_reduction.weight >= 1 ? "removed heavy grain" : "reduced grain");
+    if (d.noise_reduction && d.noise_reduction.applied) did.push(d.noise_reduction.level === "heavy" ? "removed heavy grain" : "reduced grain");
     const applied = d.applied || [];
     if (applied.includes("highlight")) did.push("softened near-white areas");
     if (applied.includes("noise")) did.push("reduced grain");
@@ -633,8 +633,9 @@ function buildReport(run, data) {
     const nr = r.noise_reduction;
     if (hue && hue.applied) out.push(`Bright spots such as windows or lamps kept their original colour (${share(hue.coverage)} of the photo).`);
     if (nr && nr.applied) {
-      out.push(nr.weight >= 1 ? "The photo was very grainy, so heavy grain was removed across the whole photo; very fine texture can look smoother."
-                              : `The photo was quite grainy, so grain was partly removed (${Math.round(nr.weight * 100)}% strength).`);
+      out.push(nr.level === "heavy"
+        ? "The photo was very grainy, so heavy grain was removed across the whole photo; very fine texture can look smoother."
+        : "The photo was grainy, so grain was reduced with a filter that holds back on fine texture such as text.");
     }
     if (applied.includes("highlight")) out.push(`Near-white areas were softened so they don't wash out (${share(found.highlight.coverage)} of the photo).`);
     if (applied.includes("noise")) out.push(`Grain in smooth areas was reduced (${share(found.noise.coverage)} of the photo).`);

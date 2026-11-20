@@ -1,18 +1,52 @@
 meta:
-  status: candidate (research/noise-reduction branch); frozen BEFORE the held-out test was run
+  status: candidate iteration 2 (research/noise-reduction branch); frozen BEFORE the fresh held-out test was run
+  iteration_1: >-
+    heavy grain only (NLM, gate 0.030 -> 0.040, strength 0.8), frozen at 2075cd5 and validated once on the TEST half
+    of the real dev pairs (+1.31 dB, SSIM 0.185 -> 0.663, 86/86 better). Unchanged here: above 0.040 the output is
+    bit-identical to iteration 1.
+  iteration_2: >-
+    adds the moderate-grain filter (QGH-NA v2, docs/NOISE_STUDY.md section 9, parameters copied unchanged from
+    configs/experimental/noise_aware_v2.yaml). Reason: the app's coffee example (input sigma 0.021) stayed grainy.
+    NLM was rejected for moderate grain on dev data (worst noisy-detail image +0.30 LPIPS: it erases text strokes);
+    the noise-aware filter on the same dev data: noisy detail LPIPS 0.377 -> 0.310 (worst +0.008), synthetic noisy
+    0.498 -> 0.384 (no image worse), clean images unchanged.
   selected_on: >-
-    dev only - the TUNE half of the real dev pairs (data/splits/noise_reduction_tune.txt, 142 images, 107 very noisy)
-    and dev_syn (90 synthetic). The TEST half (data/splits/noise_reduction_test.txt) and every validation set were
-    not looked at.
-  objective: lowest mean LPIPS on the very noisy tune images; gates where denoising helped every dev image
-  gate_evidence: >-
-    dev images with input sigma >= 0.03 were helped on LPIPS in 100 % of cases (n = 112); between 0.003 and 0.03 the
-    effect was mixed (about half helped, worst +0.15 LPIPS), so nothing changes below 0.03
+    dev only - dev_syn (90), dev_detail (84), the TUNE half of the real dev pairs. The moderate gate sits above every
+    clean dev image (max input sigma 0.009) and every eval15 / phone photo (max 0.0068).
+  held_out: >-
+    data/splits/noise_reduction_fresh.txt (180 images: 90 new scenes from unused LOL-v2 Synthetic photos and newly
+    generated text/wood/fabric, each noise-free and noisy, new noise draws), not evaluated before this freeze
   stage: model -> highlight hue fix -> noise reduction -> (Highlight-safe only) QGH refinement
-  method: OpenCV colour non-local means, h = strength * noise_level(model output) * 255
 params:
   gate_low: 0.030
   gate_high: 0.040
   strength: 0.8
   template: 7
   search: 21
+  moderate_low: 0.010
+  moderate_high: 0.014
+moderate:
+  block: 16
+  quantile: 0.3
+  noise_ratio: 0.2
+  texture_ratio: 0.55
+  luma_method: bilateral
+  luma_k: 2.0
+  luma_radius: 3
+  coarse_k: 0.0
+  detail_keep: 0.0
+  chroma_method: colour_guided
+  chroma_k: 2.0
+  chroma_radius: 16
+  luma_floor: 0.008
+  chroma_floor: 0.004
+  adaptive: true
+  edge_protect: 0.0
+  detail_ramp: [8.0, 16.0]
+  image_gate: 0.0
+  texture_gate: 0.4
+  chroma_mask: luma_noise
+  residual_protect: 0.0
+  residual_ramp: [2.0, 4.0]
+  exact_identity: true
+  texture_relief: 32.0
