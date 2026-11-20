@@ -142,6 +142,8 @@ verification, and add a parity test. Also measure Cloud Run cold start and recom
 
 **Gate:** 1.5x faster and metrics within tolerance, or no change shipped. Report even if the answer is "none qualify".
 
+**Status: DONE.** Only ONNX Runtime qualified: 1.51-1.53x at 2 threads, eval15 metrics identical (max PSNR diff 0.0152 dB). channels_last 1.37x, JIT 1.15x, int8 0.96x and torch.compile 0.98x failed the gate. Shipped behind `LUMEN_ENGINE=onnx`; default is PyTorch.
+
 ---
 
 ## Phase F - Stronger, more honest evaluation

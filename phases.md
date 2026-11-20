@@ -41,8 +41,10 @@ Numbers are LOL-v1 eval15 unless stated otherwise. Full results: [`eval_P1_T66.m
 - **UI:** the Gradio app was first hardened (single service layer, clear errors, diagnostics), then replaced in
   the redesign by a FastAPI backend with a dependency-free HTML/CSS/JS frontend. Next.js was not needed: there is
   no build step and no external requests.
-- **Speed:** ONNX export was **not done**. CPU latency was instead brought within budget by fixing thread
-  oversubscription and capping processing at 768 px in the container.
+- **Speed:** CPU latency was first brought within budget by fixing thread oversubscription and capping processing
+  at 768 px. Phase E then added an optional ONNX Runtime engine (`LUMEN_ENGINE=onnx`, hash-verified export, visible
+  fallback to PyTorch). On eval15 at 2 threads it is 1.51-1.53x faster (7.4-7.6 s to 4.9-5.0 s) with identical
+  PSNR/SSIM/LPIPS (largest per-image PSNR difference 0.0152 dB). Default stays PyTorch.
 - **Weights:** the checkpoint is **not redistributed** (licence uncertainty). It is mounted at run time and verified by SHA-256.
 
 ## Open items
