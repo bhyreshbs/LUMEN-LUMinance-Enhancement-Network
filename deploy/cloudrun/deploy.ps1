@@ -52,7 +52,7 @@ G run deploy $Service --project $ProjectId --region $Region --image $Image `
     --execution-environment gen2 --cpu 2 --memory 4Gi --cpu-boost `
     --concurrency $Concurrency --min-instances 0 --max-instances $MaxInstances --timeout 300 --port 8080 `
     --service-account $RunSa `
-    --set-env-vars "LUMEN_TORCH_THREADS=2,LUMEN_MAX_SIDE=768,LUMEN_RETINEXFORMER_WEIGHTS=/models/retinexformer_LOL_v1.pth" `
+    --set-env-vars "LUMEN_TORCH_THREADS=2,LUMEN_MAX_SIDE=768,LUMEN_ENGINE=onnx,LUMEN_RETINEXFORMER_WEIGHTS=/models/retinexformer_LOL_v1.pth" `
     --add-volume "name=models,type=cloud-storage,bucket=$Bucket,readonly=true" `
     --add-volume-mount "volume=models,mount-path=/models" `
     $auth
