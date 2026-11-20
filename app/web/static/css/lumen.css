@@ -32,6 +32,11 @@
   --darkroom-line: rgba(236, 232, 224, 0.08);
   --darkroom-ink: #ece8e0;
   --darkroom-ink-2: #aaa49a;
+  /* where a result is judged: a neutral mid-dark grey, as in photo editors. Near-black makes any photo look brighter
+     than it is (the eye adapts to the surround), so the workspace never uses it behind a result. Same in both themes. */
+  --judge: #2a2b2e;
+  --judge-panel: #222326;
+  --judge-line: rgba(236, 232, 224, 0.1);
   --float: 0 18px 50px rgba(0, 0, 0, 0.5);
   --print: 0 26px 70px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(255, 255, 255, 0.04);
 
@@ -214,7 +219,7 @@ code { background: var(--surface-2); border: 1px solid var(--line); padding: 1px
 /* ================================================================== workspace */
 .work { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--s5); align-items: start;
         max-width: var(--maxw); width: 100%; margin: 0 auto; padding: var(--s2) var(--gutter) var(--s7); }
-.darkroom { position: relative; border-radius: var(--r-xl); background: var(--darkroom); border: 1px solid var(--darkroom-line);
+.darkroom { position: relative; border-radius: var(--r-xl); background: var(--judge-panel); border: 1px solid var(--judge-line);
             color: var(--darkroom-ink); padding: var(--s4); display: grid; gap: var(--s4); }
 .darkroom__top { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); flex-wrap: wrap; }
 .darkroom__tools { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
@@ -239,7 +244,7 @@ code { background: var(--surface-2); border: 1px solid var(--line); padding: 1px
 
 /* the photo area: everything that is zoomed lives in here */
 .stage { position: relative; display: grid; place-items: center; min-height: 320px; height: clamp(360px, calc(100dvh - 330px), 780px);
-         border-radius: 14px; overflow: hidden; --zs: 1; --zx: 0px; --zy: 0px; }
+         border-radius: 14px; overflow: hidden; --zs: 1; --zx: 0px; --zy: 0px; background: var(--judge); }
 .viewer, .devview { position: relative; line-height: 0; border-radius: 4px; overflow: hidden; box-shadow: var(--print);
                     user-select: none; -webkit-user-select: none; touch-action: pan-y; max-width: 100%; background: #000; }
 .viewer img { width: 100%; height: 100%; object-fit: contain; -webkit-user-drag: none; }
