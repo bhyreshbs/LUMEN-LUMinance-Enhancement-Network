@@ -132,7 +132,30 @@ deploys it with the same settings. It then reports the URL, `/healthz` and style
 | `LUMEN_RETINEXFORMER_WEIGHTS` | `/models/retinexformer_LOL_v1.pth` | checkpoint path (bucket volume) |
 | `LUMEN_TORCH_THREADS` | 2 | CPU threads |
 | `LUMEN_MAX_SIDE` | 768 | processing size |
+| `LUMEN_ENGINE` | `onnx` | Retinexformer runs on ONNX Runtime (about 1.7-2.1x faster on Cloud Run, same output). Falls back to PyTorch, visibly, if `onnxruntime` or the export is missing or fails its hash check |
 | `LUMEN_MAX_FILE_MB`, `LUMEN_MAX_PIXELS`, `LUMEN_MAX_QUEUE` | image defaults: 20, 40e6, 16 | upload and queue limits |
+
+## ONNX engine on Cloud Run
+
+`deploy.ps1` sets `LUMEN_ENGINE=onnx`, and the image installs `requirements-onnx.txt` (`onnxruntime`). The engine needs
+the export next to the checkpoint in the weights bucket:
+
+```powershell
+python scripts\export_onnx.py    # writes weights\retinexformer_LOL_v1.onnx and .onnx.json (needs requirements-dev.txt)
+gcloud storage cp weights\retinexformer_LOL_v1.onnx weights\retinexformer_LOL_v1.onnx.json gs://<project>-lumen-weights/
+```
+
+The export records the SHA-256 of the checkpoint it came from; a stale or tampered file is rejected and the app
+falls back to PyTorch. `/api/status` reports `technical.engine` (`onnx` or `torch`) and `engine_note` (why it fell back).
+
+Measured on the live service, same images before and after (model step, 2 vCPU): 2743 -> 1585 ms, 5923 -> 2842 ms,
+6958 -> 3260 ms (1.7-2.1x). On the laptop at 2 threads over eval15: 1.51-1.53x, with identical PSNR/SSIM/LPIPS.
+
+**Access:** `deploy.ps1` without `-Public` *removes* public access (`--no-allow-unauthenticated`). Pass `-Public` on
+every deploy of the demo service, or the URL returns 403.
+
+**Cold start / min-instances:** not measured. `--min-instances 0` is kept (no idle cost); the first request after
+idle also pays container start and checkpoint load. Use `--min-instances 1` only if that wait matters for a live demo.
 
 ## Model weights: licensing limitation
 

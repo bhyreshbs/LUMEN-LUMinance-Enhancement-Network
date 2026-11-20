@@ -27,6 +27,7 @@ docker run --rm -p 7860:7860 --cpus 2 --memory 3g -v "$PWD/weights:/models:ro" l
 | Env var | Image default | Meaning |
 |---|---|---|
 | `LUMEN_MAX_SIDE` | 768 | processing size (longest side) |
+| `LUMEN_ENGINE` | `torch` | `onnx` runs Retinexformer on ONNX Runtime (CPU, 1.5-2x faster, same output). Needs `requirements-onnx.txt`, `scripts/export_onnx.py`'s `.onnx` + `.onnx.json` beside the checkpoint; falls back to PyTorch with a note in `/api/status` |
 | `LUMEN_TORCH_THREADS` | from the cgroup CPU quota | PyTorch/OpenCV threads; see *CPU threads* |
 | `LUMEN_RETINEXFORMER_WEIGHTS` | `/models/retinexformer_LOL_v1.pth` | checkpoint location |
 | `LUMEN_QG_CONFIG` | `configs/quality_guided.yaml` | calibrated Quality Guided config |
