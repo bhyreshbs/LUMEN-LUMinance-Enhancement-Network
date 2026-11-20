@@ -187,7 +187,7 @@ weights/    README only (checkpoints are not committed)
 | `LUMEN_CUDNN` | 0 in the app | the app disables cuDNN on CUDA (per-size plan building cost ~2.5 s); `1` re-enables it |
 | `PORT` / `LUMEN_HOST` | 7860 / 0.0.0.0 | app port and bind address |
 | `LUMEN_HIGHLIGHT_HUE` / `LUMEN_HUE_CONFIG` | 1 / `configs/highlight_hue.yaml` | restores the colour of near-clipped input regions in Natural and Highlight-safe (not Quick); `0` switches it off |
-| `LUMEN_NOISE_REDUCTION` / `LUMEN_NR_CONFIG` | 1 / `configs/noise_reduction.yaml` | removes heavy grain from Natural and Highlight-safe when the input is very noisy (input noise sigma >= 0.03; below that the output is unchanged); `0` switches it off. See `docs/NOISE_REDUCTION.md` |
+| `LUMEN_NOISE_REDUCTION` / `LUMEN_NR_CONFIG` | 1 / `configs/noise_reduction.yaml` | reduces grain in Natural and Highlight-safe: a detail-protecting filter for moderate grain (input noise sigma from 0.010) and non-local means for heavy grain (from 0.030); below 0.010 the output is unchanged; `0` switches it off. See `docs/NOISE_REDUCTION.md` |
 | `LUMEN_MAX_QUEUE` | 16 | requests allowed to wait while one restoration runs; beyond that the API answers 503 "busy" |
 
 ## Submission checklist
