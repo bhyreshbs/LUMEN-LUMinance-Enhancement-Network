@@ -138,6 +138,7 @@ class DeepEnhancer:
         tile: int = 1024,
         tile_overlap: int = 64,
         allow_random_init: bool = False,
+        engine: str | None = None,
     ):
         """`allow_random_init=True` is for unit tests / architecture experiments only: by default a
         missing or unloadable checkpoint raises CheckpointError, so inference never runs on random
@@ -156,6 +157,28 @@ class DeepEnhancer:
         self.model = self.spec.build().eval()
         self.weights_path = self._load(weights)
         self.model.to(self.device)
+        self.engine, self.engine_note, self._ort = "torch", "", None
+        self._pick_engine(engine or os.environ.get("LUMEN_ENGINE", "torch"))
+
+    def _pick_engine(self, requested: str) -> None:
+        """"torch" (default) or "onnx" (Retinexformer on CPU only). A request that cannot be honoured falls back to
+        PyTorch with a warning and an `engine_note`; it never changes the result, only the speed."""
+        requested = (requested or "torch").lower()
+        if requested == "torch":
+            return
+        if requested != "onnx":
+            raise ValueError(f"LUMEN_ENGINE must be 'torch' or 'onnx', got {requested!r}")
+        if self.name != "retinexformer" or self.device.type != "cpu" or self.weights_path is None:
+            self.engine_note = "the ONNX engine applies to Retinexformer on CPU only"
+            return
+        from lumen.deep.onnx_engine import OnnxRetinexformer, OnnxUnavailable
+
+        try:
+            self._ort = OnnxRetinexformer(self.weights_path, torch.get_num_threads())
+            self.engine = "onnx"
+        except OnnxUnavailable as e:
+            self.engine_note = f"ONNX engine unavailable, using PyTorch: {e}"
+            warnings.warn(self.engine_note, stacklevel=3)
 
     @property
     def pretrained(self) -> bool:
@@ -194,6 +217,9 @@ class DeepEnhancer:
         if ph or pw:
             mode = "reflect" if (ph < h and pw < w) else "replicate"
             x = F.pad(x, (0, pw, 0, ph), mode=mode)
+        if self._ort is not None:
+            o, a = self._ort(x.numpy())
+            return torch.from_numpy(o[..., :h, :w]).clamp_(0, 1), torch.from_numpy(np.abs(a)[..., :h, :w])
         with torch.autocast(device_type=self.device.type, dtype=torch.float16, enabled=self.fp16):
             out, aux = _forward_with_aux(self.model, self.name, x)
         return out[..., :h, :w].float().clamp_(0, 1), aux[..., :h, :w].float()

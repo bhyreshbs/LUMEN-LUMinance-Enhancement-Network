@@ -323,7 +323,7 @@ def create_app(service: EnhancementService) -> FastAPI:
         if st[STANDARD].available:
             enh = service.pipe.get_deep("retinexformer")
             technical |= {"model": "Retinexformer (ICCV 2023)", "checkpoint": enh.weights_path.name,
-                          "device": str(enh.device), "fp16": enh.fp16}
+                          "device": str(enh.device), "fp16": enh.fp16, "engine": enh.engine, "engine_note": enh.engine_note}
         return {"styles": styles, "research": research, "technical": technical,
                 "limits": {"max_file_mb": DEFAULT_MAX_FILE_BYTES // 2**20, "max_megapixels": DEFAULT_MAX_PIXELS / 1e6,
                            "formats": SUPPORTED_TEXT}}

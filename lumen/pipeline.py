@@ -212,4 +212,5 @@ class LumenPipeline:
             "weights": enh.weights_path.name if enh.weights_path else None,
             "device": str(enh.device),
             "fp16": enh.fp16,
+            "engine": getattr(enh, "engine", "torch"),
         }

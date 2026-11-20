@@ -1,0 +1,2 @@
+# Optional CPU engine (LUMEN_ENGINE=onnx): ONNX Runtime. See scripts/export_onnx.py and docs/DEPLOYMENT.md.
+onnxruntime==1.32.0
